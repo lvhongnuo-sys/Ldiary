@@ -1,0 +1,217 @@
+/* COMPONENTS — bubble / drawer / modal / nav-bar / header / disc / plus-menu / ctx-menu / xj-window / folder-sheet
+   Full rules for these components live here (moved out of index.html's inline <style>).
+   Glass surfaces are enhanced: backdrop-filter blur(20px)+, background rgba(255,255,255,.65),
+   border rgba(255,255,255,.4). Overlay scrims (modal/xj/folder) keep their dark dimming background
+   and only get the stronger blur; disc-controls sits over album art so it keeps a dark glass tint. */
+
+/* HEADER */
+.header {
+  flex-shrink: 0;
+  padding-top: env(safe-area-inset-top);
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(255,255,255,.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-bottom: 10px;
+  position: relative;
+}
+
+/* NAV BAR */
+.nav-bar {
+  flex-shrink: 0;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-top: 1px solid rgba(255,255,255,.4);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: visible;
+  position: relative;
+}
+
+/* BUBBLE */
+.bubble {
+  padding: 9px 13px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.4);
+}
+.typing-bubble {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,.08);
+}
+
+/* CTX MENU */
+.ctx-menu {
+  position: fixed;
+  z-index: 300;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  overflow: hidden;
+  display: none;
+  min-width: 140px;
+}
+
+/* PLUS MENU */
+.plus-menu {
+  position: fixed;
+  left: 16px;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 70px);
+  z-index: 100;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
+  overflow: hidden;
+  display: none;
+}
+
+/* DISC */
+.disc-controls {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 4px;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 20px;
+  padding: 3px 6px;
+}
+
+/* DRAWER */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 88%;
+  max-width: 360px;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-left: 1px solid rgba(255,255,255,.4);
+  z-index: 51;
+  transform: translateX(100%);
+  transition: transform .32s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,.3);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.modal-sheet {
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 480px;
+  transform: translateY(100%);
+  transition: transform .3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* XJ WINDOW */
+.xj-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.xj-window {
+  width: 100%;
+  max-width: 360px;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 28px 28px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* FOLDER SHEET */
+.folder-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.folder-sheet {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 28px 28px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+}
