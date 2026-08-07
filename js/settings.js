@@ -93,10 +93,28 @@ function testBarkPush(){
   var input=document.getElementById('barkKeyInput');
   var key=(input&&input.value.trim())||barkKey;
   if(!key){alert('请先填写 Bark Key');return;}
-  fetch('https://api.day.app/'+key+'/LDiary测试/推送成功，小机在线')
-    .then(function(res){if(!res.ok)throw new Error('bad status');return res.json();})
-    .then(function(data){alert(data&&data.code===200?'推送已发送，请查看通知':'推送已发送，如未收到请检查 Bark Key');})
-    .catch(function(){alert('推送失败，请检查 Bark Key 或网络');});
+  var btn=document.getElementById('barkTestBtn');
+  var resetLabel='🔔 测试推送';
+  if(btn){btn.disabled=true;btn.textContent='发送中…';}
+  var url='https://api.day.app/'+encodeURIComponent(key)+'/'+encodeURIComponent('LDiary测试')+'/'+encodeURIComponent('推送成功，小机在线');
+  // api.day.app doesn't send Access-Control-Allow-Origin, so a normal
+  // fetch() (mode:'cors', the default) always rejects in-browser with a
+  // network-level TypeError before we ever see a status code — even when
+  // the key is valid and the push actually reaches the phone. That's why
+  // this looked like it "always fails" regardless of the key. mode:'no-cors'
+  // still lets the request reach the server (and the notification fire);
+  // we just lose the ability to read the response, so success here only
+  // confirms the request went out, not that Bark accepted the key.
+  fetch(url,{mode:'no-cors'})
+    .then(function(){
+      if(btn)btn.textContent='✅ 已发送，请查看手机通知';
+    })
+    .catch(function(){
+      if(btn)btn.textContent='❌ 发送失败，请检查网络';
+    })
+    .then(function(){
+      setTimeout(function(){if(btn){btn.disabled=false;btn.textContent=resetLabel;}},2500);
+    });
 }
 
 // ── QUICK MENU (header gear · menu items adapt to the active page) ──
