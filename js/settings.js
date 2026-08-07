@@ -84,6 +84,62 @@ function saveAi(){aiName=document.getElementById('aiNameInput').value.trim();aiP
 function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
 function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';};reader.readAsDataURL(file);}
 
+// ── QUICK MENU (header gear · menu items adapt to the active page) ──
+var quickMenuConfig={
+  home:[
+    {icon:'◫',label:'壁纸设置',action:function(){openBgModalFor('home');}},
+    {icon:'⠿',label:'图标排序',action:function(){enterEditMode();}}
+  ],
+  chat:[
+    {icon:'◫',label:'背景设置',action:function(){openBgModalFor('chat');}},
+    {icon:'◑',label:'气泡透明度',action:function(){openBubbleOpacityModal();}},
+    {icon:'⚙',label:'API 设置',action:function(){openApiModal();}}
+  ],
+  memory:[
+    {icon:'◫',label:'背景设置',action:function(){openBgModalFor('memory');}},
+    {icon:'⚙',label:'API 设置',action:function(){openApiModal();}}
+  ],
+  together:[
+    {icon:'◫',label:'背景设置',action:function(){openBgModalFor('together');}},
+    {icon:'♪',label:'播放器主题',action:function(){openPlayerThemeModal();}},
+    {icon:'⚙',label:'API 设置',action:function(){openApiModal();}}
+  ]
+};
+function currentPageKey(){var active=document.querySelector('.page.active');return active?active.id.replace('page-',''):'home';}
+function openQuickMenu(){
+  var menu=document.getElementById('quickMenu');
+  var items=quickMenuConfig[currentPageKey()]||quickMenuConfig.home;
+  menu.innerHTML='';
+  items.forEach(function(item){
+    var row=document.createElement('div');
+    row.className='quickmenu-item';
+    row.innerHTML='<div class="quickmenu-icon">'+item.icon+'</div><span>'+item.label+'</span>';
+    row.addEventListener('click',function(e){
+      spawnQuickMenuRipple(row,e);
+      item.action();
+      setTimeout(closeQuickMenu,120);
+    });
+    menu.appendChild(row);
+  });
+  menu.classList.add('show');
+}
+function closeQuickMenu(){document.getElementById('quickMenu').classList.remove('show');}
+function spawnQuickMenuRipple(el,e){
+  var rect=el.getBoundingClientRect();
+  var size=Math.max(rect.width,rect.height);
+  var ripple=document.createElement('span');
+  ripple.className='quickmenu-ripple';
+  ripple.style.width=ripple.style.height=size+'px';
+  ripple.style.left=(e.clientX-rect.left-size/2)+'px';
+  ripple.style.top=(e.clientY-rect.top-size/2)+'px';
+  el.appendChild(ripple);
+  setTimeout(function(){ripple.remove();},500);
+}
+document.addEventListener('click',function(e){
+  var menu=document.getElementById('quickMenu');
+  if(menu&&menu.classList.contains('show')&&!menu.contains(e.target)&&!e.target.closest('.header-left'))closeQuickMenu();
+});
+
 // ── MODAL HELPERS ──
 function openModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){document.getElementById(id).classList.remove('show');}

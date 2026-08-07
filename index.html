@@ -42,10 +42,6 @@
     .page { position:absolute;inset:0;display:flex;flex-direction:column;background-size:cover;background-position:center;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity 0.22s ease,transform 0.22s ease; }
     .page.active { opacity:1;pointer-events:all;transform:translateY(0); }
 
-    /* PAGE GEAR */
-    .page-gear { position:absolute;top:12px;right:14px;z-index:10;background:rgba(255,255,255,.72);backdrop-filter:blur(8px);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;opacity:.6;box-shadow:0 1px 4px rgba(0,0,0,.1); }
-    .page-gear:active { opacity:1; }
-
     /* HOME */
     .home-page { flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative; }
     .home-wallpaper { position:absolute;inset:0;background-size:cover;background-position:center; }
@@ -304,17 +300,18 @@
 
 <div id="app">
   <div class="header">
-    <div class="header-left"><button class="icon-btn" onclick="openApiModal()">⚙</button></div>
+    <div class="header-left"><button class="icon-btn" onclick="openQuickMenu()">⚙</button></div>
     <div class="header-title" id="headerTitle">LDiary</div>
     <div class="header-sub" id="clock"></div>
   </div>
+
+  <div id="quickMenu"></div>
 
   <div class="pages">
     <!-- HOME -->
     <div class="page active" id="page-home">
       <div class="home-page" id="homePage">
         <div class="home-wallpaper" id="homeWallpaper"></div>
-        <button class="page-gear" onclick="openBgModalFor('home')">⚙</button>
         <button class="home-done-btn" id="homeDoneBtn" onclick="exitEditMode()">完成</button>
         <div class="home-time-area">
           <div class="home-time" id="homeTime">00:00</div>
@@ -326,7 +323,6 @@
 
     <!-- CHAT -->
     <div class="page" id="page-chat">
-      <button class="page-gear" onclick="openBgModalFor('chat')">⚙</button>
       <div class="chat-messages" id="messages">
         <div class="date-sep">今天</div>
         <div class="msg-row ai"><div class="msg-group"><div class="bubble">回来了。</div></div></div>
@@ -342,7 +338,6 @@
 
     <!-- MEMORY -->
     <div class="page" id="page-memory">
-      <button class="page-gear" onclick="openBgModalFor('memory')">⚙</button>
       <div class="memory-page">
         <div class="mem-section-header"><div class="mem-section-title">今日日记</div><button class="mem-gen-btn" onclick="generateDiary()" id="diaryGenBtn">AI 生成</button></div>
         <div class="mem-diary-card" id="diaryCard">
@@ -359,7 +354,6 @@
 
     <!-- TOGETHER -->
     <div class="page" id="page-together">
-      <button class="page-gear" onclick="openBgModalFor('together')">⚙</button>
       <div class="together-page">
         <div class="together-header"><div class="together-title">Together</div><label class="upload-btn">♪ 添加音乐<input type="file" accept="audio/*" multiple style="display:none" onchange="handleMusicUpload(event)"/></label></div>
         <div class="now-playing-card" id="nowPlayingCard">

@@ -4,6 +4,53 @@
    border rgba(255,255,255,.4). Overlay scrims (modal/xj/folder) keep their dark dimming background
    and only get the stronger blur; disc-controls sits over album art so it keeps a dark glass tint. */
 
+/* QUICK MENU — dropdown under header, opened via the header-left gear button */
+#quickMenu {
+  position: fixed;
+  top: calc(var(--header-h) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  z-index: 90;
+  background: rgba(255,255,255,.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255,255,255,.4);
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1), opacity .3s;
+}
+#quickMenu.show {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+.quickmenu-item {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  position: relative;
+  overflow: hidden;
+}
+.quickmenu-item:last-child { border-bottom: none; }
+.quickmenu-icon { font-size: 16px; width: 22px; text-align: center; opacity: .65; flex-shrink: 0; }
+.quickmenu-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0,0,0,.12);
+  transform: scale(0);
+  pointer-events: none;
+  animation: quickmenuRipple .5s ease-out forwards;
+}
+@keyframes quickmenuRipple {
+  to { transform: scale(2.6); opacity: 0; }
+}
+
 /* HEADER */
 .header {
   flex-shrink: 0;
