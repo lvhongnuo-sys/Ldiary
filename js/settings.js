@@ -1,0 +1,94 @@
+// ── SETTINGS STATE (api / profile / bg / player / bubble / avatar) ──
+var apiKey=localStorage.getItem('ld_key')||'';
+var model=localStorage.getItem('ld_model')||'gpt-4o-mini';
+var myName=localStorage.getItem('ld_myname')||'L';
+var myBio=localStorage.getItem('ld_mybio')||'你的私人空间';
+var aiName=localStorage.getItem('ld_ainame')||'';
+var aiPrompt=localStorage.getItem('ld_aiprompt')||'';
+var playerTheme=localStorage.getItem('ld_playertheme')||'#1c1c1e';
+var playerThemeImg=localStorage.getItem('ld_playerthemeimg')||'';
+var playerOpacity=parseInt(localStorage.getItem('ld_playeropacity')||'100');
+var bubbleOpacity=parseInt(localStorage.getItem('ld_bubbleopacity')||'92');
+var pendingPT=playerTheme,pendingPTI=playerThemeImg,pendingPO=playerOpacity;
+
+var bgOptions=[
+  {id:'default',color:'#f0eeeb',label:'默认'},{id:'warm',color:'#f5ede3',label:'暖'},
+  {id:'cool',color:'#e8edf2',label:'冷'},{id:'dark',color:'#1a1a1a',label:'深色'},
+  {id:'rose',color:'#f5e8e8',label:'玫瑰'},{id:'sage',color:'#e8f0e8',label:'绿'},
+  {id:'lavender',color:'#ede8f5',label:'薰衣草'},{id:'sand',color:'#f0ebe0',label:'沙'}
+];
+var playerThemes=[
+  {color:'#1c1c1e',label:'深色'},{color:'#3a3a38',label:'炭灰'},{color:'#4a3728',label:'棕'},
+  {color:'#2d3a4a',label:'海军'},{color:'#3a2d4a',label:'紫夜'},{color:'#4a2d35',label:'酒红'}
+];
+var bgState={
+  home:JSON.parse(localStorage.getItem('ld_bg_home')||'{"id":"default","custom":""}'),
+  chat:JSON.parse(localStorage.getItem('ld_bg_chat')||'{"id":"default","custom":""}'),
+  memory:JSON.parse(localStorage.getItem('ld_bg_memory')||'{"id":"default","custom":""}'),
+  together:JSON.parse(localStorage.getItem('ld_bg_together')||'{"id":"default","custom":""}')
+};
+var currentBgTab='chat',pendingBg={};
+
+// ── BG ──
+function applyPageBg(page){
+  var s=bgState[page];
+  var color=s.id==='custom'?null:(bgOptions.find(function(b){return b.id===s.id;})||bgOptions[0]).color;
+  if(page==='home'){
+    var el=document.getElementById('homeWallpaper');
+    el.style.backgroundImage=s.id==='custom'&&s.custom?'url('+s.custom+')':'none';
+    el.style.backgroundColor=color||'';
+  } else {
+    var el=document.getElementById('page-'+page);
+    el.style.backgroundImage=s.id==='custom'&&s.custom?'url('+s.custom+')':'';
+    el.style.backgroundColor=s.id==='custom'?'':color;
+  }
+}
+function applyPlayerStyle(){var disc=document.getElementById('discBg'),np=document.getElementById('nowPlayingCard'),op=playerOpacity/100;if(playerThemeImg){disc.style.backgroundImage='url('+playerThemeImg+')';np.style.background='url('+playerThemeImg+') center/cover';}else{disc.style.backgroundImage='none';disc.style.backgroundColor=playerTheme;np.style.background=playerTheme;}np.style.opacity=op;document.getElementById('discPlayer').style.opacity=op;}
+function applyBubbleOpacity(){document.documentElement.style.setProperty('--bubble-opacity',bubbleOpacity/100);}
+
+// ── BG MODAL ──
+function openBgModalFor(page){
+  pendingBg={home:Object.assign({},bgState.home),chat:Object.assign({},bgState.chat),memory:Object.assign({},bgState.memory),together:Object.assign({},bgState.together)};
+  currentBgTab=page;
+  var pageOrder=['home','chat','memory','together'];
+  document.querySelectorAll('#bgTabBar .tab-btn').forEach(function(b,i){b.classList.toggle('active',pageOrder[i]===page);});
+  renderBgGrid(page);openModal('bgModal');
+}
+function openBgModal(){openBgModalFor('chat');}
+function switchBgTab(page,el){currentBgTab=page;document.querySelectorAll('#bgTabBar .tab-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');renderBgGrid(page);}
+function renderBgGrid(page){
+  var grid=document.getElementById('bgGrid');grid.innerHTML='';
+  bgOptions.forEach(function(opt){var sw=document.createElement('div');sw.className='bg-swatch'+(pendingBg[page].id===opt.id?' selected':'');sw.style.backgroundColor=opt.color;sw.title=opt.label;sw.onclick=function(){document.querySelectorAll('#bgGrid .bg-swatch').forEach(function(s){s.classList.remove('selected');});sw.classList.add('selected');pendingBg[page]={id:opt.id,custom:''};bgState[page]={id:opt.id,custom:''};applyPageBg(page);};grid.appendChild(sw);});
+  if(pendingBg[page].id==='custom'&&pendingBg[page].custom){var sw=document.createElement('div');sw.className='bg-swatch selected';sw.style.backgroundImage='url('+pendingBg[page].custom+')';sw.style.backgroundSize='cover';grid.appendChild(sw);}
+}
+function handleBgUpload(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){var src=ev.target.result;pendingBg[currentBgTab]={id:'custom',custom:src};bgState[currentBgTab]={id:'custom',custom:src};applyPageBg(currentBgTab);renderBgGrid(currentBgTab);};reader.readAsDataURL(file);e.target.value='';}
+function saveBg(){bgState[currentBgTab]=Object.assign({},pendingBg[currentBgTab]);localStorage.setItem('ld_bg_'+currentBgTab,JSON.stringify(bgState[currentBgTab]));applyPageBg(currentBgTab);closeModal('bgModal');}
+
+// ── PLAYER / BUBBLE ──
+function openPlayerThemeModal(){pendingPT=playerTheme;pendingPTI=playerThemeImg;pendingPO=playerOpacity;document.getElementById('playerOpacityRange').value=playerOpacity;document.getElementById('opacityLabel').textContent=playerOpacity+'%';renderPlayerThemeGrid();openModal('playerThemeModal');}
+function renderPlayerThemeGrid(){var grid=document.getElementById('playerThemeGrid');grid.innerHTML='';playerThemes.forEach(function(t){var sw=document.createElement('div');sw.className='theme-swatch'+(pendingPT===t.color&&!pendingPTI?' selected':'');sw.style.background=t.color;sw.textContent=t.label;sw.onclick=function(){document.querySelectorAll('.theme-swatch').forEach(function(s){s.classList.remove('selected');});sw.classList.add('selected');pendingPT=t.color;pendingPTI='';};grid.appendChild(sw);});if(pendingPTI){var sw=document.createElement('div');sw.className='theme-swatch selected';sw.style.backgroundImage='url('+pendingPTI+')';sw.style.backgroundSize='cover';sw.textContent='自定义';grid.appendChild(sw);}}
+function handlePlayerBgUpload(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){pendingPTI=ev.target.result;renderPlayerThemeGrid();};reader.readAsDataURL(file);e.target.value='';}
+function updateOpacityLabel(val){pendingPO=parseInt(val);document.getElementById('opacityLabel').textContent=val+'%';}
+function savePlayerTheme(){playerTheme=pendingPT;playerThemeImg=pendingPTI;playerOpacity=pendingPO;localStorage.setItem('ld_playertheme',playerTheme);localStorage.setItem('ld_playerthemeimg',playerThemeImg);localStorage.setItem('ld_playeropacity',String(playerOpacity));updatePlayerThemeVal();applyPlayerStyle();closeModal('playerThemeModal');}
+function openBubbleOpacityModal(){document.getElementById('bubbleOpacityRange').value=bubbleOpacity;document.getElementById('bubbleOpacityLabel').textContent=bubbleOpacity+'%';openModal('bubbleOpacityModal');}
+function previewBubbleOpacity(val){document.getElementById('bubbleOpacityLabel').textContent=val+'%';document.documentElement.style.setProperty('--bubble-opacity',parseInt(val)/100);}
+function saveBubbleOpacity(){bubbleOpacity=parseInt(document.getElementById('bubbleOpacityRange').value);localStorage.setItem('ld_bubbleopacity',String(bubbleOpacity));applyBubbleOpacity();document.getElementById('bubbleOpacityVal').textContent=bubbleOpacity+'%';closeModal('bubbleOpacityModal');}
+
+// ── PROFILE / AI / API / AVATAR ──
+function openApiModal(){document.getElementById('keyInput').value=apiKey;document.getElementById('modelSelect').value=model;openModal('apiModal');}
+function saveApi(){apiKey=document.getElementById('keyInput').value.trim();model=document.getElementById('modelSelect').value;localStorage.setItem('ld_key',apiKey);localStorage.setItem('ld_model',model);updateApiStatus();if(apiKey)document.getElementById('apiVal').textContent=model;closeModal('apiModal');}
+function openProfileModal(){document.getElementById('myNameInput').value=myName;document.getElementById('myBioInput').value=myBio;openModal('profileModal');}
+function saveProfile(){myName=document.getElementById('myNameInput').value.trim()||'L';myBio=document.getElementById('myBioInput').value.trim()||'你的私人空间';localStorage.setItem('ld_myname',myName);localStorage.setItem('ld_mybio',myBio);document.getElementById('profileName').textContent=myName;document.getElementById('profileSub').textContent=myBio;closeModal('profileModal');}
+function openAiModal(){document.getElementById('aiNameInput').value=aiName;document.getElementById('aiPromptInput').value=aiPrompt;openModal('aiModal');}
+function saveAi(){aiName=document.getElementById('aiNameInput').value.trim();aiPrompt=document.getElementById('aiPromptInput').value.trim();localStorage.setItem('ld_ainame',aiName);localStorage.setItem('ld_aiprompt',aiPrompt);document.getElementById('aiNameVal').textContent=aiName||'未设置';closeModal('aiModal');}
+function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
+function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';};reader.readAsDataURL(file);}
+
+// ── MODAL HELPERS ──
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function closeModalOutside(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+// ── SETTINGS DISPLAY HELPERS ──
+function updateApiStatus(){var ok=!!apiKey;['statusDot','statusDot2'].forEach(function(id){document.getElementById(id).className='status-dot'+(ok?' ok':'');});}
+function updatePlayerThemeVal(){var t=playerThemes.find(function(t){return t.color===playerTheme;});var label=playerThemeImg?'自定义图片':(t?t.label:'自定义');document.getElementById('playerThemeVal').textContent=label+' · '+playerOpacity+'%';}
