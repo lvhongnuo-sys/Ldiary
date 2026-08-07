@@ -106,7 +106,9 @@ var quickMenuConfig={
   ]
 };
 function currentPageKey(){var active=document.querySelector('.page.active');return active?active.id.replace('page-',''):'home';}
+var quickMenuClearTimer=null;
 function openQuickMenu(){
+  clearTimeout(quickMenuClearTimer);
   var menu=document.getElementById('quickMenu');
   var items=quickMenuConfig[currentPageKey()]||quickMenuConfig.home;
   menu.innerHTML='';
@@ -123,7 +125,17 @@ function openQuickMenu(){
   });
   menu.classList.add('show');
 }
-function closeQuickMenu(){document.getElementById('quickMenu').classList.remove('show');}
+function closeQuickMenu(){
+  var menu=document.getElementById('quickMenu');
+  menu.classList.remove('show');
+  // Drop the rendered items once the slide-up finishes (300ms, matches the
+  // CSS transition) so the box goes back to zero height while hidden. Left
+  // in place, the stale items gave the closed menu real height, and its
+  // translateY(-100%) then dragged that tall box up over the header —
+  // covering the gear button and swallowing its clicks.
+  clearTimeout(quickMenuClearTimer);
+  quickMenuClearTimer=setTimeout(function(){menu.innerHTML='';},300);
+}
 function spawnQuickMenuRipple(el,e){
   var rect=el.getBoundingClientRect();
   var size=Math.max(rect.width,rect.height);
