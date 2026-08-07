@@ -94,26 +94,40 @@ function testBarkPush(){
   var key=(input&&input.value.trim())||barkKey;
   if(!key){alert('请先填写 Bark Key');return;}
   var btn=document.getElementById('barkTestBtn');
+  var hint=document.getElementById('barkTestHint');
   var resetLabel='🔔 测试推送';
+  var resetHint=hint?hint.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='发送中…';}
+  if(hint)hint.textContent='';
   var url='https://api.day.app/'+encodeURIComponent(key)+'/'+encodeURIComponent('LDiary测试')+'/'+encodeURIComponent('推送成功，小机在线');
-  // api.day.app doesn't send Access-Control-Allow-Origin, so a normal
-  // fetch() (mode:'cors', the default) always rejects in-browser with a
-  // network-level TypeError before we ever see a status code — even when
-  // the key is valid and the push actually reaches the phone. That's why
-  // this looked like it "always fails" regardless of the key. mode:'no-cors'
-  // still lets the request reach the server (and the notification fire);
-  // we just lose the ability to read the response, so success here only
-  // confirms the request went out, not that Bark accepted the key.
-  fetch(url,{mode:'no-cors'})
-    .then(function(){
-      if(btn)btn.textContent='✅ 已发送，请查看手机通知';
+  // Verified directly against api.day.app: a 200 response DOES carry
+  // Access-Control-Allow-Origin:* (curl-checked with a real key), so on a
+  // valid key a plain fetch() resolves and we can read the real body. Only
+  // *error* responses (bad key etc.) come back with no CORS header at all —
+  // that specific case still surfaces as an opaque rejection we can't read
+  // past, which is a Bark-server asymmetry, not something fixable here.
+  fetch(url)
+    .then(function(res){
+      return res.json().catch(function(){return null;}).then(function(data){
+        var ok=res.ok&&data&&data.code===200;
+        if(btn)btn.textContent=ok?'✅ 已发送，请查看手机通知':'⚠️ 服务器拒绝';
+        if(!ok&&hint)hint.textContent='Bark 返回：'+(data&&data.message?data.message:('HTTP '+res.status))+'，请检查 Key 是否正确';
+      });
     })
-    .catch(function(){
-      if(btn)btn.textContent='❌ 发送失败，请检查网络';
+    .catch(function(err){
+      // A real network-level failure (offline, blocked, or — very likely if
+      // this page was opened as a local file — Safari refusing outbound
+      // fetch() from a file:// origin). Surface the actual browser message
+      // instead of guessing, so the exact cause is visible next time.
+      console.error('Bark 推送请求失败：',err);
+      if(btn)btn.textContent='❌ 发送失败';
+      if(hint)hint.textContent='请求未发出：'+(err&&err.message?err.message:String(err))+'。若地址栏以 file:// 开头，请改用本地服务器打开本页面再试。';
     })
     .then(function(){
-      setTimeout(function(){if(btn){btn.disabled=false;btn.textContent=resetLabel;}},2500);
+      setTimeout(function(){
+        if(btn){btn.disabled=false;btn.textContent=resetLabel;}
+        if(hint)hint.textContent=resetHint;
+      },6000);
     });
 }
 
