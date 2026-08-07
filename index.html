@@ -48,7 +48,7 @@
     .home-time-area { position:relative;z-index:2;text-align:center;padding:32px 0 20px; }
     .home-time { font-size:56px;font-weight:200;letter-spacing:-1px;color:var(--text-primary);line-height:1; }
     .home-date { font-size:13px;color:var(--text-secondary);margin-top:6px;letter-spacing:.04em; }
-    .home-grid { position:relative;z-index:2;flex:1;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px 16px;align-content:start;padding-top:8px;overflow-y:auto; }
+    .home-grid { position:relative;z-index:2;flex:1;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px 16px;align-content:safe center;padding-top:8px;overflow-y:auto; }
     .home-icon-wrap { display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;touch-action:none; }
     .home-icon { width:62px;height:62px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:transform .1s; }
     .home-icon:active { transform:scale(.92); }
@@ -510,6 +510,12 @@
       </div>
     </div>
     <div class="drawer-section">
+      <div class="section-label">推送</div>
+      <div class="setting-card">
+        <div class="setting-row" onclick="openBarkModal()"><div class="setting-icon">🔔</div><div class="setting-text"><div class="setting-name">推送设置</div><div class="setting-val" id="barkVal">未配置</div></div><span class="status-dot" id="barkStatusDot2"></span><div class="setting-arrow">›</div></div>
+      </div>
+    </div>
+    <div class="drawer-section">
       <div class="section-label">数据</div>
       <div class="setting-card">
         <div class="setting-row" onclick="exportData()"><div class="setting-icon">↓</div><div class="setting-text"><div class="setting-name">导出聊天记录</div></div><div class="setting-arrow">›</div></div>
@@ -540,6 +546,7 @@
 </div>
 <div class="modal-overlay" id="playerThemeModal" onclick="closeModalOutside(event,'playerThemeModal')"><div class="modal-sheet"><div class="modal-title">播放器主题</div><div class="modal-label">颜色/图片</div><div class="player-theme-grid" id="playerThemeGrid"></div><label class="bg-upload-btn">上传自定义背景图片<input type="file" accept="image/*" style="display:none" onchange="handlePlayerBgUpload(event)"/></label><div class="modal-label">透明度</div><div class="range-wrap"><input type="range" id="playerOpacityRange" min="20" max="100" value="100" oninput="updateOpacityLabel(this.value)"/><div class="range-label"><span>20%</span><span id="opacityLabel">100%</span><span>100%</span></div></div><button class="modal-save" onclick="savePlayerTheme()">保存</button><button class="modal-cancel" onclick="closeModal('playerThemeModal')">取消</button></div></div>
 <div class="modal-overlay" id="bubbleOpacityModal" onclick="closeModalOutside(event,'bubbleOpacityModal')"><div class="modal-sheet"><div class="modal-title">气泡透明度</div><div class="modal-label">调低可透出背景图</div><div class="range-wrap"><input type="range" id="bubbleOpacityRange" min="20" max="100" value="92" oninput="previewBubbleOpacity(this.value)"/><div class="range-label"><span>20%</span><span id="bubbleOpacityLabel">92%</span><span>100%</span></div></div><button class="modal-save" onclick="saveBubbleOpacity()">保存</button><button class="modal-cancel" onclick="closeModal('bubbleOpacityModal')">取消</button></div></div>
+<div class="modal-overlay" id="barkModal" onclick="closeModalOutside(event,'barkModal')"><div class="modal-sheet"><div class="modal-title">推送设置 <span class="status-dot" id="barkStatusDot"></span></div><div class="modal-label">Bark Key</div><input class="modal-input mono" id="barkKeyInput" type="text" placeholder="从 Bark App 复制的 Key"/><button class="modal-save" onclick="saveBark()">保存</button><button class="modal-cancel" onclick="testBarkPush()">🔔 测试推送</button><button class="modal-cancel" onclick="closeModal('barkModal')">取消</button></div></div>
 
 <audio id="audioEl" preload="auto"></audio>
 <script src="js/settings.js"></script>
@@ -746,6 +753,7 @@ function init(){
   if(apiKey)document.getElementById('apiVal').textContent=model;
   updatePlayerThemeVal();
   document.getElementById('bubbleOpacityVal').textContent=bubbleOpacity+'%';
+  updateBarkStatus();
   var av=localStorage.getItem('ld_avatar');
   if(av)document.getElementById('avatarDisplay').innerHTML='<img src="'+av+'"/>';
   var dp=localStorage.getItem('ld_disc_pos');

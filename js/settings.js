@@ -9,6 +9,7 @@ var playerTheme=localStorage.getItem('ld_playertheme')||'#1c1c1e';
 var playerThemeImg=localStorage.getItem('ld_playerthemeimg')||'';
 var playerOpacity=parseInt(localStorage.getItem('ld_playeropacity')||'100');
 var bubbleOpacity=parseInt(localStorage.getItem('ld_bubbleopacity')||'92');
+var barkKey=localStorage.getItem('bark_key')||'';
 var pendingPT=playerTheme,pendingPTI=playerThemeImg,pendingPO=playerOpacity;
 
 var bgOptions=[
@@ -83,6 +84,20 @@ function openAiModal(){document.getElementById('aiNameInput').value=aiName;docum
 function saveAi(){aiName=document.getElementById('aiNameInput').value.trim();aiPrompt=document.getElementById('aiPromptInput').value.trim();localStorage.setItem('ld_ainame',aiName);localStorage.setItem('ld_aiprompt',aiPrompt);document.getElementById('aiNameVal').textContent=aiName||'未设置';closeModal('aiModal');}
 function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
 function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';};reader.readAsDataURL(file);}
+
+// ── PUSH / BARK ──
+function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;openModal('barkModal');}
+function saveBark(){barkKey=document.getElementById('barkKeyInput').value.trim();localStorage.setItem('bark_key',barkKey);updateBarkStatus();closeModal('barkModal');}
+function updateBarkStatus(){var ok=!!barkKey;['barkStatusDot','barkStatusDot2'].forEach(function(id){var el=document.getElementById(id);if(el)el.className='status-dot'+(ok?' ok':'');});document.getElementById('barkVal').textContent=ok?'已配置':'未配置';}
+function testBarkPush(){
+  var input=document.getElementById('barkKeyInput');
+  var key=(input&&input.value.trim())||barkKey;
+  if(!key){alert('请先填写 Bark Key');return;}
+  fetch('https://api.day.app/'+key+'/LDiary测试/推送成功，小机在线')
+    .then(function(res){if(!res.ok)throw new Error('bad status');return res.json();})
+    .then(function(data){alert(data&&data.code===200?'推送已发送，请查看通知':'推送已发送，如未收到请检查 Bark Key');})
+    .catch(function(){alert('推送失败，请检查 Bark Key 或网络');});
+}
 
 // ── QUICK MENU (header gear · menu items adapt to the active page) ──
 var quickMenuConfig={
