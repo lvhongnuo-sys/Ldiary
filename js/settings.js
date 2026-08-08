@@ -86,14 +86,7 @@ function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
 function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';};reader.readAsDataURL(file);}
 
 // ── PUSH / BARK ──
-function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;var log=document.getElementById('barkDebugLog');if(log){log.style.display='none';log.textContent='';}openModal('barkModal');}
-function barkLog(msg){
-  var log=document.getElementById('barkDebugLog');
-  if(!log)return;
-  log.style.display='block';
-  log.textContent+=(log.textContent?'\n':'')+msg;
-  log.scrollTop=log.scrollHeight;
-}
+function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;openModal('barkModal');}
 function saveBark(){barkKey=document.getElementById('barkKeyInput').value.trim();localStorage.setItem('bark_key',barkKey);updateBarkStatus();closeModal('barkModal');}
 function updateBarkStatus(){var ok=!!barkKey;['barkStatusDot','barkStatusDot2'].forEach(function(id){var el=document.getElementById(id);if(el)el.className='status-dot'+(ok?' ok':'');});document.getElementById('barkVal').textContent=ok?'已配置':'未配置';}
 function testBarkPush(){
@@ -102,11 +95,9 @@ function testBarkPush(){
   if(!key){alert('请先填写 Bark Key');return;}
   var btn=document.getElementById('barkTestBtn');
   var hint=document.getElementById('barkTestHint');
-  var log=document.getElementById('barkDebugLog');
   var resetLabel='🔔 测试推送';
   if(btn){btn.disabled=true;btn.textContent='发送中…';}
   if(hint)hint.textContent='';
-  if(log){log.textContent='';log.style.display='none';}
   var url='https://api.day.app/'+encodeURIComponent(key)+'/'+encodeURIComponent('LDiary测试')+'/'+encodeURIComponent('推送成功，小机在线');
   // Verified directly against api.day.app: a 200 response DOES carry
   // Access-Control-Allow-Origin:* (curl-checked with a real key), so on a
@@ -114,27 +105,16 @@ function testBarkPush(){
   // *error* responses (bad key etc.) come back with no CORS header at all —
   // that specific case still surfaces as an opaque rejection we can't read
   // past, which is a Bark-server asymmetry, not something fixable here.
-  // Everything below goes into #barkDebugLog (visible on the page, not just
-  // console.log) — most testers here are on iPhone Safari with no devtools,
-  // so the exact failure point needs to be readable without an inspector.
-  barkLog('请求 URL: '+url);
-  barkLog('页面地址: '+location.href);
-  // No timeout previously — if the request just hung (packets dropped,
-  // network path to api.day.app blocked, etc.) the fetch() promise never
-  // settles, so neither .then nor .catch ever runs and the button sits on
-  // "发送中…" forever with zero feedback. That's exactly what the on-page
-  // log showed: request logged, then nothing — not a rejected promise, an
-  // unsettled one. AbortController forces a decision after 12s so there's
-  // always a final state to show.
+  // AbortController forces a decision after 12s — without it, a request
+  // that just hangs (network path to api.day.app stalling) never settles
+  // either .then or .catch, leaving the button stuck on "发送中…" forever.
   var timedOut=false;
   var controller=(typeof AbortController!=='undefined')?new AbortController():null;
   var timeoutId=controller?setTimeout(function(){timedOut=true;controller.abort();},12000):null;
   fetch(url,controller?{signal:controller.signal}:{})
     .then(function(res){
       clearTimeout(timeoutId);
-      barkLog('收到响应: HTTP '+res.status+'（ok='+res.ok+', type='+res.type+'）');
-      return res.json().catch(function(jsonErr){barkLog('响应体不是 JSON: '+jsonErr);return null;}).then(function(data){
-        barkLog('响应内容: '+(data?JSON.stringify(data):'(空)'));
+      return res.json().catch(function(){return null;}).then(function(data){
         var ok=res.ok&&data&&data.code===200;
         if(btn)btn.textContent=ok?'✅ 已发送，请查看手机通知':'⚠️ 服务器拒绝';
         if(hint)hint.textContent=ok?'':'Bark 返回：'+(data&&data.message?data.message:('HTTP '+res.status))+'，请检查 Key 是否正确';
@@ -147,16 +127,14 @@ function testBarkPush(){
         // never got a response within 12s. That points at the network path
         // from this device to api.day.app, not at the app's code (a curl
         // from a different network can succeed while this still times out).
-        barkLog('请求超时（12 秒内无响应），已中止。这多半是当前设备/网络连不通 api.day.app，和代码无关。');
         if(btn)btn.textContent='⏱ 请求超时';
         if(hint)hint.textContent='12 秒内无响应，请换一个网络（WiFi/蜂窝切换）再试';
       } else {
         // A real network-level failure (offline, blocked, or — very likely
         // if this page was opened as a local file — Safari refusing
         // outbound fetch() from a file:// origin).
-        barkLog('fetch 被拒绝: '+(err&&err.name)+' — '+(err&&err.message?err.message:String(err)));
         if(btn)btn.textContent='❌ 发送失败';
-        if(hint)hint.textContent='请求未发出，详情见下方日志';
+        if(hint)hint.textContent='请求未发出：'+(err&&err.message?err.message:String(err));
       }
     })
     .then(function(){
