@@ -119,8 +119,19 @@ function testBarkPush(){
   // so the exact failure point needs to be readable without an inspector.
   barkLog('请求 URL: '+url);
   barkLog('页面地址: '+location.href);
-  fetch(url)
+  // No timeout previously — if the request just hung (packets dropped,
+  // network path to api.day.app blocked, etc.) the fetch() promise never
+  // settles, so neither .then nor .catch ever runs and the button sits on
+  // "发送中…" forever with zero feedback. That's exactly what the on-page
+  // log showed: request logged, then nothing — not a rejected promise, an
+  // unsettled one. AbortController forces a decision after 12s so there's
+  // always a final state to show.
+  var timedOut=false;
+  var controller=(typeof AbortController!=='undefined')?new AbortController():null;
+  var timeoutId=controller?setTimeout(function(){timedOut=true;controller.abort();},12000):null;
+  fetch(url,controller?{signal:controller.signal}:{})
     .then(function(res){
+      clearTimeout(timeoutId);
       barkLog('收到响应: HTTP '+res.status+'（ok='+res.ok+', type='+res.type+'）');
       return res.json().catch(function(jsonErr){barkLog('响应体不是 JSON: '+jsonErr);return null;}).then(function(data){
         barkLog('响应内容: '+(data?JSON.stringify(data):'(空)'));
@@ -130,12 +141,23 @@ function testBarkPush(){
       });
     })
     .catch(function(err){
-      // A real network-level failure (offline, blocked, or — very likely if
-      // this page was opened as a local file — Safari refusing outbound
-      // fetch() from a file:// origin).
-      barkLog('fetch 被拒绝: '+(err&&err.name)+' — '+(err&&err.message?err.message:String(err)));
-      if(btn)btn.textContent='❌ 发送失败';
-      if(hint)hint.textContent='请求未发出，详情见下方日志';
+      clearTimeout(timeoutId);
+      if(timedOut){
+        // Settled by our own abort, not a real browser error — the request
+        // never got a response within 12s. That points at the network path
+        // from this device to api.day.app, not at the app's code (a curl
+        // from a different network can succeed while this still times out).
+        barkLog('请求超时（12 秒内无响应），已中止。这多半是当前设备/网络连不通 api.day.app，和代码无关。');
+        if(btn)btn.textContent='⏱ 请求超时';
+        if(hint)hint.textContent='12 秒内无响应，请换一个网络（WiFi/蜂窝切换）再试';
+      } else {
+        // A real network-level failure (offline, blocked, or — very likely
+        // if this page was opened as a local file — Safari refusing
+        // outbound fetch() from a file:// origin).
+        barkLog('fetch 被拒绝: '+(err&&err.name)+' — '+(err&&err.message?err.message:String(err)));
+        if(btn)btn.textContent='❌ 发送失败';
+        if(hint)hint.textContent='请求未发出，详情见下方日志';
+      }
     })
     .then(function(){
       setTimeout(function(){
