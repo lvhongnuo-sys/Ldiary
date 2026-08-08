@@ -106,9 +106,13 @@ function testBarkPush(){
   // *error* responses (bad key etc.) come back with no CORS header at all —
   // that specific case still surfaces as an opaque rejection we can't read
   // past, which is a Bark-server asymmetry, not something fixable here.
+  console.log('[Bark] fetch URL:',url);
+  console.log('[Bark] page origin:',location.href);
   fetch(url)
     .then(function(res){
-      return res.json().catch(function(){return null;}).then(function(data){
+      console.log('[Bark] response received — status:',res.status,'ok:',res.ok,'type:',res.type);
+      return res.json().catch(function(jsonErr){console.log('[Bark] body was not JSON:',jsonErr);return null;}).then(function(data){
+        console.log('[Bark] response body:',data);
         var ok=res.ok&&data&&data.code===200;
         if(btn)btn.textContent=ok?'✅ 已发送，请查看手机通知':'⚠️ 服务器拒绝';
         if(!ok&&hint)hint.textContent='Bark 返回：'+(data&&data.message?data.message:('HTTP '+res.status))+'，请检查 Key 是否正确';
@@ -119,7 +123,7 @@ function testBarkPush(){
       // this page was opened as a local file — Safari refusing outbound
       // fetch() from a file:// origin). Surface the actual browser message
       // instead of guessing, so the exact cause is visible next time.
-      console.error('Bark 推送请求失败：',err);
+      console.error('[Bark] fetch() rejected — name:',err&&err.name,'message:',err&&err.message,err);
       if(btn)btn.textContent='❌ 发送失败';
       if(hint)hint.textContent='请求未发出：'+(err&&err.message?err.message:String(err))+'。若地址栏以 file:// 开头，请改用本地服务器打开本页面再试。';
     })
