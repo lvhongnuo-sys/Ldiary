@@ -282,6 +282,7 @@
     #catSvgWrap.bopping { animation:catBop .35s ease-in-out infinite; }
   </style>
   <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/lock.css" />
 </head>
 <body>
 
@@ -550,6 +551,7 @@
 
 <audio id="audioEl" preload="auto"></audio>
 <script src="js/settings.js"></script>
+<script src="js/lock.js"></script>
 <script>
 // ── STATE ──
 var chatHistory=[],playlist=[],currentIdx=-1,isPlaying=false;
@@ -643,7 +645,7 @@ function homeIconTap(id){
 function updateHomeTime(){var now=new Date();var h=String(now.getHours()).padStart(2,'0'),m=String(now.getMinutes()).padStart(2,'0');document.getElementById('homeTime').textContent=h+':'+m;var days=['周日','周一','周二','周三','周四','周五','周六'];document.getElementById('homeDate').textContent=(now.getMonth()+1)+'月'+now.getDate()+'日 '+days[now.getDay()];}
 
 // ── XJ ──
-function openXj(){document.getElementById('xjOverlay').classList.add('show');}
+function openXj(){openLock('xiaoji',function(){document.getElementById('xjOverlay').classList.add('show');});}
 function closeXj(){document.getElementById('xjOverlay').classList.remove('show');}
 function closeXjOutside(e){if(e.target===document.getElementById('xjOverlay'))closeXj();}
 function xjOpen(type){closeXj();var msgs={diary:'小机正在写今天的日记…',observe:'小机在悄悄观察你。',murmur:'小机有好多碎碎念想说…',mood:'小机今天心情不错。',letter:'小机在写一封信给你。'};setTimeout(function(){switchTab('chat',document.getElementById('nav-home'));appendMessage(msgs[type]||'…','ai');},300);}

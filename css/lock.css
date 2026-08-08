@@ -1,0 +1,69 @@
+/* LOCK SCREEN — passcode gate for independent "spaces" (currently just the
+   小机手机 space; the module in js/lock.js supports more via a spaceId, e.g.
+   a future "nuonuo" space). Styled after the iOS lock-screen reference:
+   dark glass backdrop, translucent white keypad circles, hollow/filled
+   progress dots. Deliberately dark — unlike the rest of LDiary's light
+   frosted glass — to match that reference and stay legible as a full-screen
+   overlay with no wallpaper of its own underneath. */
+
+.lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(20,20,22,.72);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  padding: calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 20px);
+  -webkit-tap-highlight-color: transparent;
+}
+.lock-overlay.show { opacity: 1; pointer-events: all; }
+
+.lock-head { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.lock-hint { color: rgba(255,255,255,.85); font-size: 15px; letter-spacing: .02em; text-align: center; max-width: 260px; }
+
+.lock-dots { display: flex; gap: 18px; }
+.lock-dots.shake { animation: lockShake .5s; }
+.lock-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.7);
+  background: transparent;
+  transition: background .15s, border-color .15s;
+}
+.lock-dot.filled { background: #fff; border-color: #fff; }
+.lock-dot.error { background: #ff453a; border-color: #ff453a; }
+@keyframes lockShake {
+  10%,90% { transform: translateX(-2px); }
+  20%,80% { transform: translateX(4px); }
+  30%,50%,70% { transform: translateX(-8px); }
+  40%,60% { transform: translateX(8px); }
+}
+
+.lock-keypad { display: grid; grid-template-columns: repeat(3,72px); gap: 22px 26px; justify-content: center; }
+.lock-key {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.28);
+  color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  transition: transform .1s, background .1s;
+}
+.lock-key:active { transform: scale(.92); background: rgba(255,255,255,.28); }
+.lock-key-num { font-size: 30px; font-weight: 400; line-height: 1; }
+.lock-key-letters { font-size: 9px; letter-spacing: .12em; color: rgba(255,255,255,.7); margin-top: 3px; }
+.lock-key-empty { background: none; border: none; cursor: default; }
+.lock-key-del { background: none; border: none; box-shadow: none; font-size: 22px; color: rgba(255,255,255,.8); }
+.lock-key-del:active { transform: scale(.9); background: none; }
+
+.lock-footer { display: flex; justify-content: center; }
+.lock-cancel { background: none; border: none; color: rgba(255,255,255,.85); font-size: 15px; cursor: pointer; padding: 8px 20px; }
