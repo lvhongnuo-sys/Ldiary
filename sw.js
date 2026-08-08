@@ -1,6 +1,6 @@
 // Bump CACHE_VERSION whenever index.html / css / js under this scope change,
 // so returning clients pick up the new files instead of stale cached ones.
-var CACHE_VERSION = 'v4';
+var CACHE_VERSION = 'v5';
 var CACHE_NAME = 'ldiary-cache-' + CACHE_VERSION;
 var APP_SHELL = [
   'index.html',

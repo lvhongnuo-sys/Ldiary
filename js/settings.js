@@ -86,7 +86,14 @@ function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
 function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';};reader.readAsDataURL(file);}
 
 // ── PUSH / BARK ──
-function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;openModal('barkModal');}
+function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;var log=document.getElementById('barkDebugLog');if(log){log.style.display='none';log.textContent='';}openModal('barkModal');}
+function barkLog(msg){
+  var log=document.getElementById('barkDebugLog');
+  if(!log)return;
+  log.style.display='block';
+  log.textContent+=(log.textContent?'\n':'')+msg;
+  log.scrollTop=log.scrollHeight;
+}
 function saveBark(){barkKey=document.getElementById('barkKeyInput').value.trim();localStorage.setItem('bark_key',barkKey);updateBarkStatus();closeModal('barkModal');}
 function updateBarkStatus(){var ok=!!barkKey;['barkStatusDot','barkStatusDot2'].forEach(function(id){var el=document.getElementById(id);if(el)el.className='status-dot'+(ok?' ok':'');});document.getElementById('barkVal').textContent=ok?'已配置':'未配置';}
 function testBarkPush(){
@@ -95,10 +102,11 @@ function testBarkPush(){
   if(!key){alert('请先填写 Bark Key');return;}
   var btn=document.getElementById('barkTestBtn');
   var hint=document.getElementById('barkTestHint');
+  var log=document.getElementById('barkDebugLog');
   var resetLabel='🔔 测试推送';
-  var resetHint=hint?hint.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='发送中…';}
   if(hint)hint.textContent='';
+  if(log){log.textContent='';log.style.display='none';}
   var url='https://api.day.app/'+encodeURIComponent(key)+'/'+encodeURIComponent('LDiary测试')+'/'+encodeURIComponent('推送成功，小机在线');
   // Verified directly against api.day.app: a 200 response DOES carry
   // Access-Control-Allow-Origin:* (curl-checked with a real key), so on a
@@ -106,31 +114,32 @@ function testBarkPush(){
   // *error* responses (bad key etc.) come back with no CORS header at all —
   // that specific case still surfaces as an opaque rejection we can't read
   // past, which is a Bark-server asymmetry, not something fixable here.
-  console.log('[Bark] fetch URL:',url);
-  console.log('[Bark] page origin:',location.href);
+  // Everything below goes into #barkDebugLog (visible on the page, not just
+  // console.log) — most testers here are on iPhone Safari with no devtools,
+  // so the exact failure point needs to be readable without an inspector.
+  barkLog('请求 URL: '+url);
+  barkLog('页面地址: '+location.href);
   fetch(url)
     .then(function(res){
-      console.log('[Bark] response received — status:',res.status,'ok:',res.ok,'type:',res.type);
-      return res.json().catch(function(jsonErr){console.log('[Bark] body was not JSON:',jsonErr);return null;}).then(function(data){
-        console.log('[Bark] response body:',data);
+      barkLog('收到响应: HTTP '+res.status+'（ok='+res.ok+', type='+res.type+'）');
+      return res.json().catch(function(jsonErr){barkLog('响应体不是 JSON: '+jsonErr);return null;}).then(function(data){
+        barkLog('响应内容: '+(data?JSON.stringify(data):'(空)'));
         var ok=res.ok&&data&&data.code===200;
         if(btn)btn.textContent=ok?'✅ 已发送，请查看手机通知':'⚠️ 服务器拒绝';
-        if(!ok&&hint)hint.textContent='Bark 返回：'+(data&&data.message?data.message:('HTTP '+res.status))+'，请检查 Key 是否正确';
+        if(hint)hint.textContent=ok?'':'Bark 返回：'+(data&&data.message?data.message:('HTTP '+res.status))+'，请检查 Key 是否正确';
       });
     })
     .catch(function(err){
       // A real network-level failure (offline, blocked, or — very likely if
       // this page was opened as a local file — Safari refusing outbound
-      // fetch() from a file:// origin). Surface the actual browser message
-      // instead of guessing, so the exact cause is visible next time.
-      console.error('[Bark] fetch() rejected — name:',err&&err.name,'message:',err&&err.message,err);
+      // fetch() from a file:// origin).
+      barkLog('fetch 被拒绝: '+(err&&err.name)+' — '+(err&&err.message?err.message:String(err)));
       if(btn)btn.textContent='❌ 发送失败';
-      if(hint)hint.textContent='请求未发出：'+(err&&err.message?err.message:String(err))+'。若地址栏以 file:// 开头，请改用本地服务器打开本页面再试。';
+      if(hint)hint.textContent='请求未发出，详情见下方日志';
     })
     .then(function(){
       setTimeout(function(){
         if(btn){btn.disabled=false;btn.textContent=resetLabel;}
-        if(hint)hint.textContent=resetHint;
       },6000);
     });
 }
