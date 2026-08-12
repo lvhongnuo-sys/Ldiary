@@ -169,7 +169,7 @@ function lockBuildDom() {
   var keysHtml = digits.map(function(k) {
     return '<button type="button" class="lock-key" onclick="lockPressDigit(\'' + k.d + '\')"><span class="lock-key-num">' + k.d + '</span>' + (k.l ? '<span class="lock-key-letters">' + k.l + '</span>' : '') + '</button>';
   }).join('') +
-    '<div class="lock-key lock-key-empty"></div>' +
+    '<button type="button" class="lock-key lock-key-paw" onclick="lockPressPaw()">🐾</button>' +
     '<button type="button" class="lock-key" onclick="lockPressDigit(\'0\')"><span class="lock-key-num">0</span></button>' +
     '<button type="button" class="lock-key lock-key-del" onclick="lockPressDelete()">⌫</button>';
   var dotsHtml = '';
