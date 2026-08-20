@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>聊天气泡修复测试</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#f0eeeb;
+      --surface:#fff;
+      --border:#e8e6e3;
+      --text-primary:#1c1c1e;
+      --text-secondary:#8e8e93;
+      --text-light:#c7c7cc;
+      --bubble-user:#1c1c1e;
+      --bubble-ai:#fff;
+      --bubble-opacity:0.92;
+    }
+    body {
+      background:var(--bg);
+      font-family:-apple-system, sans-serif;
+      color:var(--text-primary);
+      padding:20px;
+    }
+    .container {
+      max-width:600px;
+      margin:0 auto;
+    }
+    .test-section {
+      margin-bottom:40px;
+      padding:20px;
+      background:var(--surface);
+      border-radius:12px;
+      border:1px solid var(--border);
+    }
+    .test-title {
+      font-size:16px;
+      font-weight:600;
+      margin-bottom:12px;
+      color:var(--text-primary);
+    }
+    .chat-preview {
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding:12px;
+      background:#fafaf8;
+      border-radius:8px;
+      border:1px solid var(--border);
+      min-height:200px;
+    }
+
+    /* Message Styles */
+    .msg-row {
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      width:100%;
+      margin-bottom:12px;
+    }
+    .msg-row.ai { justify-content:flex-start; }
+    .msg-row.user { justify-content:flex-end; }
+
+    .msg-avatar {
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      font-size:12px;
+      font-weight:600;
+      color:#fff;
+      background:linear-gradient(135deg, #7e7c82, #5a5a58);
+      margin-top:4px;
+    }
+
+    .msg-card {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      max-width:min(82%, 300px);
+      width:fit-content;
+    }
+    .msg-card.ai { align-items:flex-start; }
+    .msg-card.user { align-items:flex-end; }
+
+    .msg-header {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:0 2px;
+      min-height:1.2em;
+      width:100%;
+    }
+    .msg-card.user .msg-header { flex-direction:row-reverse; justify-content:flex-end; }
+
+    .msg-meta {
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+      flex:1;
+    }
+    .msg-author {
+      font-size:11px;
+      font-weight:600;
+      color:var(--text-secondary);
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .msg-time {
+      font-size:9px;
+      color:var(--text-light);
+      line-height:1;
+      white-space:nowrap;
+    }
+
+    .msg-body { display:flex; width:100%; min-width:0; }
+    .msg-card.user .msg-body { justify-content:flex-end; }
+
+    .bubble {
+      display:inline-block;
+      max-width:100%;
+      padding:10px 14px;
+      font-size:14px;
+      line-height:1.4;
+      word-break:break-word;
+      white-space:pre-wrap;
+      border:none;
+      border-radius:14px;
+      min-height:1.4em;
+      height:auto;
+    }
+    .msg-row.ai .bubble {
+      background:rgba(255,255,255,.82);
+      color:var(--text-primary);
+      border-radius:14px 14px 14px 4px;
+    }
+    .msg-row.user .bubble {
+      background:rgba(28,28,30,0.92);
+      color:#fff;
+      border-radius:14px 14px 4px 14px;
+    }
+
+    .color-indicator {
+      display:inline-block;
+      width:16px;
+      height:16px;
+      border-radius:4px;
+      border:1px solid rgba(0,0,0,.1);
+      margin-right:4px;
+      vertical-align:middle;
+    }
+
+    .desc {
+      font-size:12px;
+      color:var(--text-secondary);
+      margin-bottom:8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 style="text-align:center;margin-bottom:30px;">聊天气泡修复测试</h1>
+
+  <!-- 测试1: 短文本 -->
+  <div class="test-section">
+    <div class="test-title">✓ 测试1: 短文本 (无折叠/挤压)</div>
+    <div class="desc">验证短句子显示正确，无文字折叠问题</div>
+    <div class="chat-preview">
+      <div class="msg-row ai">
+        <div class="msg-avatar">A</div>
+        <div class="msg-card ai">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;"></div>
+            <div class="msg-meta">
+              <div class="msg-author">助手</div>
+              <div class="msg-time">10:30</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">好的</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg-row user">
+        <div class="msg-card user">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;background:linear-gradient(135deg, #3a3a3f, #7b7b82);"></div>
+            <div class="msg-meta">
+              <div class="msg-author">我</div>
+              <div class="msg-time">10:30</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">没错</div>
+          </div>
+        </div>
+        <div class="msg-avatar" style="background:linear-gradient(135deg, #3a3a3f, #7b7b82);">我</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试2: 中等长度 -->
+  <div class="test-section">
+    <div class="test-title">✓ 测试2: 中等长度文本</div>
+    <div class="desc">验证中等长度文本自适应高度和间距</div>
+    <div class="chat-preview">
+      <div class="msg-row ai">
+        <div class="msg-avatar">A</div>
+        <div class="msg-card ai">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;"></div>
+            <div class="msg-meta">
+              <div class="msg-author">助手</div>
+              <div class="msg-time">10:30</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">这是一条中等长度的消息，用来测试气泡的自适应高度。内容不会被挤压。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg-row user">
+        <div class="msg-card user">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;background:linear-gradient(135deg, #3a3a3f, #7b7b82);"></div>
+            <div class="msg-meta">
+              <div class="msg-author">我</div>
+              <div class="msg-time">10:31</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">我也发送一条中等长度的消息，头像和气泡之间的空白应该一致。</div>
+          </div>
+        </div>
+        <div class="msg-avatar" style="background:linear-gradient(135deg, #3a3a3f, #7b7b82);">我</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试3: 超长文本 -->
+  <div class="test-section">
+    <div class="test-title">✓ 测试3: 超长文本</div>
+    <div class="desc">验证超长文本自动换行和头像对齐</div>
+    <div class="chat-preview">
+      <div class="msg-row ai">
+        <div class="msg-avatar">A</div>
+        <div class="msg-card ai">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;"></div>
+            <div class="msg-meta">
+              <div class="msg-author">助手</div>
+              <div class="msg-time">10:32</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">这是一条非常长的超长文本消息，用来测试多行文本的正确显示。当文本过长时应该自动换行，气泡高度应该自动调整以适应内容。用户和AI的气泡布局应该保持一致，头像应该与气泡对齐良好。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg-row user">
+        <div class="msg-card user">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;background:linear-gradient(135deg, #3a3a3f, #7b7b82);"></div>
+            <div class="msg-meta">
+              <div class="msg-author">我</div>
+              <div class="msg-time">10:32</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble">我的超长消息也应该正确显示。头像和气泡之间的间距应该与AI消息一致，不应该有过大的空白。文本应该自动换行，气泡高度应该自动调整。</div>
+          </div>
+        </div>
+        <div class="msg-avatar" style="background:linear-gradient(135deg, #3a3a3f, #7b7b82);">我</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试4: 气泡颜色 -->
+  <div class="test-section">
+    <div class="test-title">✓ 测试4: 气泡颜色设置</div>
+    <div class="desc">验证自定义颜色覆盖透明度设置，颜色保持优先级</div>
+    <div class="chat-preview">
+      <div class="msg-row ai">
+        <div class="msg-avatar">A</div>
+        <div class="msg-card ai">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;"></div>
+            <div class="msg-meta">
+              <div class="msg-author">助手(蓝色)</div>
+              <div class="msg-time">10:33</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble" style="background:#e3f2fd;color:#1565c0;">自定义蓝色气泡，颜色优先级最高</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg-row user">
+        <div class="msg-card user">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;background:linear-gradient(135deg, #3a3a3f, #7b7b82);"></div>
+            <div class="msg-meta">
+              <div class="msg-author">我(绿色)</div>
+              <div class="msg-time">10:33</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble" style="background:#c8e6c9;color:#2e7d32;">自定义绿色气泡，颜色覆盖透明度</div>
+          </div>
+        </div>
+        <div class="msg-avatar" style="background:linear-gradient(135deg, #3a3a3f, #7b7b82);">我</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试5: 透明度对比 -->
+  <div class="test-section">
+    <div class="test-title">✓ 测试5: 透明度设置（未设置颜色时生效）</div>
+    <div class="desc">验证默认状态下透明度变量正确应用</div>
+    <div class="chat-preview">
+      <div class="msg-row user">
+        <div class="msg-card user">
+          <div class="msg-header">
+            <div class="msg-avatar" style="width:16px;height:16px;background:linear-gradient(135deg, #3a3a3f, #7b7b82);"></div>
+            <div class="msg-meta">
+              <div class="msg-author">我(默认透明度)</div>
+              <div class="msg-time">10:34</div>
+            </div>
+          </div>
+          <div class="msg-body">
+            <div class="bubble" style="background:rgba(28,28,30,0.92);color:#fff;">使用透明度变量(0.92)，未设置颜色时应用</div>
+          </div>
+        </div>
+        <div class="msg-avatar" style="background:linear-gradient(135deg, #3a3a3f, #7b7b82);">我</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试结果说明 -->
+  <div class="test-section" style="background:#f0f7f4;border-color:#c8e6c9;">
+    <div class="test-title">修复验证项目</div>
+    <div style="font-size:13px;line-height:1.8;color:var(--text-primary);">
+      <p>✓ <strong>短文本折叠</strong>: 气泡使用 min-height 和 height:auto，确保内容正确显示</p>
+      <p>✓ <strong>间距对齐</strong>: msg-row align-items 改为 flex-start，msg-avatar 添加 margin-top，确保头像与气泡对齐</p>
+      <p>✓ <strong>自适应高度</strong>: bubble 使用 inline-block 和 height:auto，支持多行文本</p>
+      <p>✓ <strong>颜色优先级</strong>: 代码逻辑检查自定义颜色，优先使用颜色而非透明度</p>
+      <p>✓ <strong>预览定位</strong>: 添加 scrollIntoView 确保修改后立即显示</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

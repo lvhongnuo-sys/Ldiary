@@ -8,9 +8,56 @@ var aiName=localStorage.getItem('ld_ainame')||'';
 var aiPrompt=localStorage.getItem('ld_aiprompt')||'';
 var currentAssistantId=localStorage.getItem('ld_current_assistant_id')||null;
 var playerTheme=localStorage.getItem('ld_playertheme')||'#1c1c1e';
+
+// ── PROFILE SYNC (实时同步 chat 消息中的 profile 信息) ──
+function updateChatProfileInfo(){
+  var messagesEl=document.getElementById('messages');
+  if(!messagesEl)return;
+  var msgRows=messagesEl.querySelectorAll('.msg-row');
+  msgRows.forEach(function(row){
+    if(row.classList.contains('user')){
+      // 更新用户消息中的用户名
+      var author=row.querySelector('.msg-author');
+      if(author)author.textContent=myName||'L';
+      // 更新用户头像
+      var avatar=row.querySelector('.msg-avatar');
+      if(avatar){
+        var userAvatar=localStorage.getItem('ld_avatar');
+        if(userAvatar){
+          if(!avatar.querySelector('img')){
+            avatar.innerHTML='<img src="'+userAvatar+'" style="width:100%;height:100%;object-fit:cover;"/>';
+            avatar.textContent='';
+          }else{
+            avatar.querySelector('img').src=userAvatar;
+          }
+        }
+      }
+    }else if(row.classList.contains('ai')){
+      // 更新 AI 消息中的 AI 名称
+      var author=row.querySelector('.msg-author');
+      if(author)author.textContent=aiName||'小机';
+      // 更新 AI 头像
+      var avatar=row.querySelector('.msg-avatar');
+      if(avatar){
+        var currentAsst=null;
+        if(typeof getAssistantList==='function'){
+          var list=getAssistantList();
+          currentAsst=list.find(function(a){return a.id===currentAssistantId;})||list[0];
+        }
+        if(currentAsst&&currentAsst.avatar){
+          if(!avatar.querySelector('img')){
+            avatar.innerHTML='<img src="'+currentAsst.avatar+'" style="width:100%;height:100%;object-fit:cover;"/>';
+            avatar.textContent='';
+          }else{
+            avatar.querySelector('img').src=currentAsst.avatar;
+          }
+        }
+      }
+    }
+  });
+}
 var playerThemeImg=localStorage.getItem('ld_playerthemeimg')||'';
 var playerOpacity=parseInt(localStorage.getItem('ld_playeropacity')||'100');
-var bubbleOpacity=parseInt(localStorage.getItem('ld_bubbleopacity')||'92');
 var barkKey=localStorage.getItem('bark_key')||'';
 var customModels=JSON.parse(localStorage.getItem('ld_custom_models')||'[]');
 var pendingPT=playerTheme,pendingPTI=playerThemeImg,pendingPO=playerOpacity;
@@ -111,7 +158,6 @@ function applyPageBg(page){
   }
 }
 function applyPlayerStyle(){var disc=document.getElementById('discBg'),np=document.getElementById('nowPlayingCard'),op=playerOpacity/100;if(playerThemeImg){disc.style.backgroundImage='url('+playerThemeImg+')';np.style.background='url('+playerThemeImg+') center/cover';}else{disc.style.backgroundImage='none';disc.style.backgroundColor=playerTheme;np.style.background=playerTheme;}np.style.opacity=op;document.getElementById('discPlayer').style.opacity=op;}
-function applyBubbleOpacity(){document.documentElement.style.setProperty('--bubble-opacity',bubbleOpacity/100);}
 
 // ── BG MODAL ──
 function openBgModalFor(page){
@@ -137,9 +183,16 @@ function renderPlayerThemeGrid(){var grid=document.getElementById('playerThemeGr
 function handlePlayerBgUpload(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){pendingPTI=ev.target.result;renderPlayerThemeGrid();};reader.readAsDataURL(file);e.target.value='';}
 function updateOpacityLabel(val){pendingPO=parseInt(val);document.getElementById('opacityLabel').textContent=val+'%';}
 function savePlayerTheme(){playerTheme=pendingPT;playerThemeImg=pendingPTI;playerOpacity=pendingPO;localStorage.setItem('ld_playertheme',playerTheme);localStorage.setItem('ld_playerthemeimg',playerThemeImg);localStorage.setItem('ld_playeropacity',String(playerOpacity));updatePlayerThemeVal();applyPlayerStyle();closeModal('playerThemeModal');}
-function openBubbleOpacityModal(){document.getElementById('bubbleOpacityRange').value=bubbleOpacity;document.getElementById('bubbleOpacityLabel').textContent=bubbleOpacity+'%';openModal('bubbleOpacityModal');}
+function openBubbleOpacityModal(){document.getElementById('bubbleOpacityRange').value=chatAppearanceSettings.bubbleOpacity;document.getElementById('bubbleOpacityLabel').textContent=chatAppearanceSettings.bubbleOpacity+'%';openModal('bubbleOpacityModal');}
 function previewBubbleOpacity(val){document.getElementById('bubbleOpacityLabel').textContent=val+'%';document.documentElement.style.setProperty('--bubble-opacity',parseInt(val)/100);}
-function saveBubbleOpacity(){bubbleOpacity=parseInt(document.getElementById('bubbleOpacityRange').value);localStorage.setItem('ld_bubbleopacity',String(bubbleOpacity));applyBubbleOpacity();document.getElementById('bubbleOpacityVal').textContent=bubbleOpacity+'%';closeModal('bubbleOpacityModal');}
+function saveBubbleOpacity(){
+  chatAppearanceSettings.bubbleOpacity=parseInt(document.getElementById('bubbleOpacityRange').value);
+  localStorage.setItem('ld_chat_bubble_opacity',String(chatAppearanceSettings.bubbleOpacity));
+  document.documentElement.style.setProperty('--bubble-opacity',chatAppearanceSettings.bubbleOpacity/100);
+  applyChatAppearanceSettings();
+  document.getElementById('bubbleOpacityVal').textContent=chatAppearanceSettings.bubbleOpacity+'%';
+  closeModal('bubbleOpacityModal');
+}
 
 // ── PROFILE / AI / API / AVATAR ──
 function normalizeApiBaseUrl(value){
@@ -304,6 +357,88 @@ async function fetchModelOptions(){
 function getChatCompletionUrl(){
   return normalizeApiBaseUrl(apiBaseUrl) + '/chat/completions';
 }
+function isGeminiResponse(data){
+  return data && data.candidates && Array.isArray(data.candidates) && !data.choices;
+}
+function extractUsageMeta(data){
+  if(!data) return null;
+  var usage=null;
+  var nestedCandidates=[];
+
+  if(data.usage){usage=data.usage;}
+  else if(data.usageMetadata){usage=data.usageMetadata;}
+  else if(data.usage_metadata){usage=data.usage_metadata;}
+  else if(data.metadata&&data.metadata.usage){usage=data.metadata.usage;}
+  else if(data.choices&&data.choices[0]&&data.choices[0].usage){usage=data.choices[0].usage;}
+  else if(data.candidates&&data.candidates[0]&&data.candidates[0].usageMetadata){usage=data.candidates[0].usageMetadata;}
+  else if(data.candidates&&data.candidates[0]&&data.candidates[0].usage_metadata){usage=data.candidates[0].usage_metadata;}
+
+  if(!usage && data.metadata && typeof data.metadata==='object'){usage=data.metadata;}
+  if(!usage){return null;}
+
+  nestedCandidates.push(usage);
+  if(usage && usage.metadata && typeof usage.metadata==='object'){nestedCandidates.push(usage.metadata);}
+  if(data && data.metadata && typeof data.metadata==='object'){nestedCandidates.push(data.metadata);}
+  if(data && data.usageMetadata && typeof data.usageMetadata==='object'){nestedCandidates.push(data.usageMetadata);}
+  if(data && data.usage_metadata && typeof data.usage_metadata==='object'){nestedCandidates.push(data.usage_metadata);}
+
+  function pickFirstValue(obj, keys){
+    if(!obj || typeof obj!=='object') return undefined;
+    for(var i=0;i<keys.length;i++){
+      if(typeof obj[keys[i]]!=='undefined' && obj[keys[i]] !== null && obj[keys[i]] !== '') return obj[keys[i]];
+    }
+    return undefined;
+  }
+
+  function pickRemaining(obj){
+    if(!obj || typeof obj!=='object') return undefined;
+    var value = pickFirstValue(obj,['remaining_tokens','remainingTokens','remaining_token_count','remainingTokenCount']);
+    if(typeof value!=='undefined') return value;
+    if(obj.metadata && typeof obj.metadata==='object'){
+      var nested = pickFirstValue(obj.metadata,['remaining_tokens','remainingTokens','remaining_token_count','remainingTokenCount']);
+      if(typeof nested!=='undefined') return nested;
+    }
+    return undefined;
+  }
+
+  var normalized={};
+  var prompt = pickFirstValue(usage,['prompt_tokens','promptTokenCount','prompt_token_count']);
+  var completion = pickFirstValue(usage,['completion_tokens','output_tokens','outputTokenCount','candidatesTokenCount','completionTokenCount']);
+  var total = pickFirstValue(usage,['total_tokens','totalTokenCount','total_token_count']);
+  var context = pickFirstValue(usage,['context_tokens','contextTokenCount','context_token_count']);
+  var remaining = undefined;
+  for(var i=0;i<nestedCandidates.length;i++){
+    var candidate = nestedCandidates[i];
+    if(typeof remaining==='undefined') remaining = pickRemaining(candidate);
+  }
+  if(typeof remaining==='undefined'){remaining = pickFirstValue(data,['remaining_tokens','remainingTokens','remaining_token_count','remainingTokenCount']);}
+  if(typeof prompt!=='undefined') normalized.prompt_tokens=Number(prompt)||0;
+  if(typeof completion!=='undefined') normalized.completion_tokens=Number(completion)||0;
+  if(typeof total!=='undefined') normalized.total_tokens=Number(total)||0;
+  if(typeof context!=='undefined') normalized.context_tokens=Number(context)||0;
+  if(typeof remaining!=='undefined' && remaining !== null && remaining !== '') normalized.remaining_tokens=Number(remaining)||0;
+  if(!normalized.total_tokens && normalized.prompt_tokens && normalized.completion_tokens){normalized.total_tokens=normalized.prompt_tokens+normalized.completion_tokens;}
+  if(!normalized.prompt_tokens && normalized.total_tokens && normalized.completion_tokens){normalized.prompt_tokens=Math.max(0, normalized.total_tokens - normalized.completion_tokens);}
+  if(!normalized.completion_tokens && normalized.total_tokens && normalized.prompt_tokens){normalized.completion_tokens=Math.max(0, normalized.total_tokens - normalized.prompt_tokens);}
+  if(typeof normalized.context_tokens==='undefined' && typeof normalized.prompt_tokens!=='undefined'){normalized.context_tokens=Number(normalized.prompt_tokens)||0;}
+  if(typeof normalized.remaining_tokens!=='undefined' && normalized.remaining_tokens < 0){normalized.remaining_tokens = 0;}
+  return Object.keys(normalized).length ? normalized : null;
+}
+function normalizeResponse(data){
+  if(isGeminiResponse(data)){
+    var candidate=data.candidates[0];
+    if(!candidate) return null;
+    var content=candidate.content&&candidate.content.parts&&candidate.content.parts[0]?candidate.content.parts[0].text:'';
+    var finishReason=candidate.finish_reason;
+    var normalizedReason='stop';
+    if(finishReason==='MAX_TOKENS') normalizedReason='length';
+    else if(finishReason==='STOP'||finishReason==='stop') normalizedReason='stop';
+    return {content:content,finish_reason:normalizedReason,usage:extractUsageMeta(data)};
+  }else if(data&&data.choices&&data.choices[0]){
+    return {content:data.choices[0].message.content,finish_reason:data.choices[0].finish_reason||'stop',usage:extractUsageMeta(data)};
+  }
+  return null;
+}
 function openApiModal(){
   document.getElementById('baseUrlInput').value=apiBaseUrl;
   document.getElementById('keyInput').value=apiKey;
@@ -329,7 +464,7 @@ function saveApi(){
   closeModal('apiModal');
 }
 function openProfileModal(){document.getElementById('myNameInput').value=myName;document.getElementById('myBioInput').value=myBio;openModal('profileModal');}
-function saveProfile(){myName=document.getElementById('myNameInput').value.trim()||'L';myBio=document.getElementById('myBioInput').value.trim()||'你的私人空间';localStorage.setItem('ld_myname',myName);localStorage.setItem('ld_mybio',myBio);document.getElementById('profileName').textContent=myName;document.getElementById('profileSub').textContent=myBio;renderRoleProfilePage();closeModal('profileModal');}
+function saveProfile(){myName=document.getElementById('myNameInput').value.trim()||'L';myBio=document.getElementById('myBioInput').value.trim()||'你的私人空间';localStorage.setItem('ld_myname',myName);localStorage.setItem('ld_mybio',myBio);document.getElementById('profileName').textContent=myName;document.getElementById('profileSub').textContent=myBio;renderRoleProfilePage();updateChatProfileInfo();closeModal('profileModal');}
 function switchAssistantEditorTab(tabName){
   document.querySelectorAll('.assistant-editor-panel').forEach(function(panel){
     panel.classList.toggle('active', panel.id === 'assistant-editor-' + tabName);
@@ -389,13 +524,13 @@ function handleAssistantAvatar(e){
       selected.avatar=src;
       localStorage.setItem('ld_assistants', JSON.stringify(list));
     }
-    localStorage.setItem('ld_avatar', src);
     var avatarNode=document.getElementById('assistantAvatarStatic');
     if(avatarNode){
       avatarNode.innerHTML = '<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;border-radius:18px;" />';
     }
     if(typeof renderRoleProfilePage === 'function') renderRoleProfilePage();
     renderAssistantCards();
+    updateChatProfileInfo();
   };
   reader.readAsDataURL(file);
   e.target.value='';
@@ -405,7 +540,7 @@ function getAssistantList(){
     var list=JSON.parse(localStorage.getItem('ld_assistants')||'[]');
     if(!Array.isArray(list) || !list.length){
       list=[
-        {id:'assistant-default',name:'小机',bio:'你的私人 AI 伙伴，温柔、聪明且有边界。',prompt:aiPrompt||'',avatar:localStorage.getItem('ld_avatar')||'',model:model||'gpt-4o-mini'},
+        {id:'assistant-default',name:'小机',bio:'你的私人 AI 伙伴，温柔、聪明且有边界。',prompt:aiPrompt||'',avatar:'',model:model||'gpt-4o-mini'},
         {id:'assistant-l',name:'L 助手',bio:'陪伴式助手，适合记录日常、总结情绪与灵感。',prompt:aiPrompt||'',avatar:'',model:model||'gpt-4o-mini'}
       ];
       localStorage.setItem('ld_assistants', JSON.stringify(list));
@@ -426,6 +561,7 @@ function setCurrentAssistant(id){
   if(item.model){model=item.model;localStorage.setItem('ld_model', model);}
   localStorage.setItem('ld_ainame', aiName);
   localStorage.setItem('ld_aiprompt', aiPrompt);
+  updateChatProfileInfo();
 }
 function renderAssistantCards(){
   var host=document.getElementById('assistantCardList');
@@ -591,7 +727,7 @@ function openAiModal(){
   if(aiPromptInput) aiPromptInput.value=aiPrompt||'';
   populateAssistantModelSelect();
 }
-function saveAi(){aiName=document.getElementById('aiNameInput').value.trim();aiPrompt=document.getElementById('aiPromptInput').value.trim();localStorage.setItem('ld_ainame',aiName);localStorage.setItem('ld_aiprompt',aiPrompt);document.getElementById('aiNameVal').textContent=aiName||'未设置';renderRoleProfilePage();closeModal('aiModal');}
+function saveAi(){aiName=document.getElementById('aiNameInput').value.trim();aiPrompt=document.getElementById('aiPromptInput').value.trim();localStorage.setItem('ld_ainame',aiName);localStorage.setItem('ld_aiprompt',aiPrompt);document.getElementById('aiNameVal').textContent=aiName||'未设置';renderRoleProfilePage();updateChatProfileInfo();closeModal('aiModal');}
 function renderRoleProfilePage(){var pageName=document.getElementById('profilePageName');var pageBio=document.getElementById('profilePageBio');var pageAvatar=document.getElementById('profilePageAvatar');var roleName=document.getElementById('roleNameValue');var roleBio=document.getElementById('roleBioValue');var roleAiName=document.getElementById('roleAiNameValue');var roleAiRole=document.getElementById('roleAiRoleValue');var rolePrompt=document.getElementById('rolePromptValue');if(pageName)pageName.textContent=myName||'L';if(pageBio)pageBio.textContent=myBio||'你的私人空间';if(pageAvatar){var avatar=localStorage.getItem('ld_avatar');pageAvatar.innerHTML=avatar?'<img src="'+avatar+'" />':'◇';}if(roleName)roleName.textContent=myName||'L';if(roleBio)roleBio.textContent=myBio||'你的私人空间';if(roleAiName)roleAiName.textContent=aiName||'未设置';if(roleAiRole)roleAiRole.textContent=aiName?('陪伴型助手'):'私人伴侣';if(rolePrompt)rolePrompt.textContent=aiPrompt||'尚未填写人设，当前保持为温暖、克制、陪伴的默认设定。';}
 function openRoleProfilePage(){switchTab('profile',null);renderRoleProfilePage();}
 function populateAssistantModelSelect(){
@@ -633,9 +769,6 @@ function savePersonaPage(){
     selected.bio=nextAssistantBio || selected.bio || '你的专属助手。';
     selected.prompt=nextAssistantPrompt;
     selected.model=currentModelValue || selected.model || 'gpt-4o-mini';
-    if(!selected.avatar){
-      selected.avatar=localStorage.getItem('ld_avatar')||'';
-    }
   }
   aiName=selected ? selected.name : nextAssistantName;
   aiPrompt=selected ? selected.prompt : nextAssistantPrompt;
@@ -647,11 +780,12 @@ function savePersonaPage(){
   if(document.getElementById('aiNameVal')) document.getElementById('aiNameVal').textContent=aiName||'未设置';
   renderRoleProfilePage();
   renderAssistantCards();
+  updateChatProfileInfo();
   if(document.getElementById('headerTitle')) document.getElementById('headerTitle').textContent='角色档案';
   switchTab('assistant-settings',null);
 }
 function triggerAvatarUpload(){document.getElementById('avatarInput').click();}
-function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';renderRoleProfilePage();};reader.readAsDataURL(file);}
+function handleAvatar(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){localStorage.setItem('ld_avatar',ev.target.result);document.getElementById('avatarDisplay').innerHTML='<img src="'+ev.target.result+'"/>';renderRoleProfilePage();updateChatProfileInfo();};reader.readAsDataURL(file);}
 
 // ── PUSH / BARK ──
 function openBarkModal(){document.getElementById('barkKeyInput').value=barkKey;openModal('barkModal');}
@@ -828,3 +962,305 @@ function closeModalOutside(e,id){if(e.target===document.getElementById(id))close
 // ── SETTINGS DISPLAY HELPERS ──
 function updateApiStatus(){var ok=!!apiKey;['statusDot','statusDot2'].forEach(function(id){var el=document.getElementById(id);if(el)el.className='status-dot'+(ok?' ok':'');});}
 function updatePlayerThemeVal(){var t=playerThemes.find(function(t){return t.color===playerTheme;});var label=playerThemeImg?'自定义图片':(t?t.label:'自定义');var el=document.getElementById('playerThemeVal');if(el)el.textContent=label+' · '+playerOpacity+'%';}
+
+// ── CHAT APPEARANCE SETTINGS ──
+// 状态变量
+var chatAppearanceSettings={
+  avatarSize:parseInt(localStorage.getItem('ld_chat_avatar_size')||'56'),
+  avatarShape:localStorage.getItem('ld_chat_avatar_shape')||'circle',
+  bubbleMaxWidth:parseInt(localStorage.getItem('ld_chat_bubble_max_width')||'70'),
+  bubbleRadius:parseInt(localStorage.getItem('ld_chat_bubble_radius')||'16'),
+  bubblePadding:parseInt(localStorage.getItem('ld_chat_bubble_padding')||'10'),
+  userBubbleColor:localStorage.getItem('ld_chat_user_bubble_color')||'#1c1c1e',
+  aiBubbleColor:localStorage.getItem('ld_chat_ai_bubble_color')||'#ffffff',
+  bubbleOpacity:parseInt(localStorage.getItem('ld_chat_bubble_opacity')||'92'),
+  showUserName:localStorage.getItem('ld_chat_show_username')!=='false',
+  showAiName:localStorage.getItem('ld_chat_show_ainame')!=='false',
+  showMessageTime:localStorage.getItem('ld_chat_show_time')!=='false'
+};
+
+function openChatAppearancePage(){
+  switchTab('chat-appearance',null);
+  initChatAppearanceSettings();
+}
+
+function initChatAppearanceSettings(){
+  // 初始化滑块
+  var avatarSizeSlider=document.getElementById('avatarSizeSlider');
+  var bubbleWidthSlider=document.getElementById('bubbleWidthSlider');
+  var bubbleRadiusSlider=document.getElementById('bubbleRadiusSlider');
+  var bubblePaddingSlider=document.getElementById('bubblePaddingSlider');
+  var bubbleOpacityRange=document.getElementById('bubbleOpacityRange');
+
+  if(avatarSizeSlider)avatarSizeSlider.value=chatAppearanceSettings.avatarSize;
+  if(bubbleWidthSlider)bubbleWidthSlider.value=chatAppearanceSettings.bubbleMaxWidth;
+  if(bubbleRadiusSlider)bubbleRadiusSlider.value=chatAppearanceSettings.bubbleRadius;
+  if(bubblePaddingSlider)bubblePaddingSlider.value=chatAppearanceSettings.bubblePadding;
+  if(bubbleOpacityRange){
+    bubbleOpacityRange.value=chatAppearanceSettings.bubbleOpacity;
+    document.getElementById('bubbleOpacityLabel').textContent=chatAppearanceSettings.bubbleOpacity+'%';
+  }
+
+  // 初始化颜色
+  var userColorInput=document.getElementById('userBubbleColorInput');
+  var aiColorInput=document.getElementById('aiBubbleColorInput');
+  if(userColorInput)userColorInput.value=chatAppearanceSettings.userBubbleColor;
+  if(aiColorInput)aiColorInput.value=chatAppearanceSettings.aiBubbleColor;
+
+  // 初始化形状按钮
+  document.querySelectorAll('.chat-appearance-shape-btn').forEach(function(btn){
+    btn.classList.remove('active');
+    if(btn.dataset.shape===chatAppearanceSettings.avatarShape){
+      btn.classList.add('active');
+    }
+  });
+
+  // 初始化复选框
+  var showUserName=document.getElementById('showUserName');
+  var showAiName=document.getElementById('showAiName');
+  var showTime=document.getElementById('showMessageTime');
+  if(showUserName)showUserName.checked=chatAppearanceSettings.showUserName;
+  if(showAiName)showAiName.checked=chatAppearanceSettings.showAiName;
+  if(showTime)showTime.checked=chatAppearanceSettings.showMessageTime;
+
+  // 更新预览
+  updateChatAppearancePreview();
+}
+
+function updateChatAppearancePreview(){
+  // 获取所有输入值
+  var avatarSize=parseInt(document.getElementById('avatarSizeSlider')?.value||56);
+  var bubbleWidth=parseInt(document.getElementById('bubbleWidthSlider')?.value||70);
+  var bubbleRadius=parseInt(document.getElementById('bubbleRadiusSlider')?.value||16);
+  var bubblePadding=parseInt(document.getElementById('bubblePaddingSlider')?.value||10);
+  var userBubbleColor=document.getElementById('userBubbleColorInput')?.value||'#1c1c1e';
+  var aiBubbleColor=document.getElementById('aiBubbleColorInput')?.value||'#ffffff';
+  var showUserName=document.getElementById('showUserName')?.checked!==false;
+  var showAiName=document.getElementById('showAiName')?.checked!==false;
+  var showTime=document.getElementById('showMessageTime')?.checked!==false;
+
+  // 更新标签
+  document.getElementById('avatarSizeLabel').textContent=avatarSize<=40?'小':avatarSize<=56?'中':'大';
+  document.getElementById('bubbleWidthLabel').textContent=bubbleWidth;
+  document.getElementById('bubbleRadiusLabel').textContent=bubbleRadius;
+  document.getElementById('bubblePaddingLabel').textContent=bubblePadding;
+  document.getElementById('userBubbleColorLabel').textContent=userBubbleColor;
+  document.getElementById('aiBubbleColorLabel').textContent=aiBubbleColor;
+
+  // 更新预览消息样式
+  var previewAiMsg=document.getElementById('previewAiMsg');
+  var previewUserMsg=document.getElementById('previewUserMsg');
+  var previewAiAvatar=document.getElementById('previewAiAvatar');
+  var previewUserAvatar=document.getElementById('previewUserAvatar');
+  var previewAiName=document.getElementById('previewAiName');
+  var previewUserName=document.getElementById('previewUserName');
+  var previewAiTime=document.getElementById('previewAiTime');
+  var previewUserTime=document.getElementById('previewUserTime');
+  var previewMessages=document.getElementById('previewMessages');
+
+  if(previewMessages){
+    previewMessages.style.border='none';
+    previewMessages.style.borderWidth='0';
+    previewMessages.style.borderStyle='none';
+    previewMessages.style.borderColor='transparent';
+    previewMessages.style.outline='none';
+    previewMessages.style.boxShadow='none';
+  }
+
+  // 更新头像尺寸和形状
+  if(previewAiAvatar){
+    previewAiAvatar.style.width=avatarSize+'px';
+    previewAiAvatar.style.height=avatarSize+'px';
+    applyAvatarShape(previewAiAvatar,chatAppearanceSettings.avatarShape);
+  }
+  if(previewUserAvatar){
+    previewUserAvatar.style.width=avatarSize+'px';
+    previewUserAvatar.style.height=avatarSize+'px';
+    applyAvatarShape(previewUserAvatar,chatAppearanceSettings.avatarShape);
+  }
+
+  // 更新气泡样式
+  var bubbles=document.querySelectorAll('#previewMessages .bubble');
+  bubbles.forEach(function(bubble){
+    bubble.style.borderRadius=bubbleRadius+'px';
+    bubble.style.padding=bubblePadding+'px '+(bubblePadding+4)+'px';
+    if(bubble.closest('.msg-row.ai')){
+      bubble.style.backgroundColor=aiBubbleColor;
+      bubble.style.color=getContrastColor(aiBubbleColor);
+      bubble.style.opacity='1';
+    }else if(bubble.closest('.msg-row.user')){
+      bubble.style.backgroundColor=userBubbleColor;
+      bubble.style.color='#fff';
+      bubble.style.opacity='1';
+    }
+  });
+
+  // 更新名称和时间显示
+  if(previewAiName)previewAiName.style.display=showAiName?'block':'none';
+  if(previewUserName)previewUserName.style.display=showUserName?'block':'none';
+  if(previewAiTime)previewAiTime.style.display=showTime?'block':'none';
+  if(previewUserTime)previewUserTime.style.display=showTime?'block':'none';
+
+  // 优化预览定位：确保预览区域滚动到可见范围
+  var previewBox=document.querySelector('.chat-appearance-preview-box');
+  if(previewBox){
+    previewBox.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
+
+function applyAvatarShape(avatarEl,shape){
+  switch(shape){
+    case 'circle':
+      avatarEl.style.borderRadius='50%';
+      break;
+    case 'rounded':
+      avatarEl.style.borderRadius='12px';
+      break;
+    case 'square':
+      avatarEl.style.borderRadius='0';
+      break;
+  }
+}
+
+function setChatAvatarShape(shape){
+  chatAppearanceSettings.avatarShape=shape;
+  document.querySelectorAll('.chat-appearance-shape-btn').forEach(function(btn){
+    btn.classList.remove('active');
+    if(btn.dataset.shape===shape){
+      btn.classList.add('active');
+    }
+  });
+  updateChatAppearancePreview();
+}
+
+function getContrastColor(hexColor){
+  var normalized=(hexColor||'#ffffff').trim();
+  if(normalized.startsWith('#')===false) normalized='#'+normalized;
+  var clean=normalized.replace('#','');
+  if(clean.length===3){clean=clean.split('').map(function(ch){return ch+ch;}).join('');}
+  var r=parseInt(clean.substr(0,2),16)||0;
+  var g=parseInt(clean.substr(2,2),16)||0;
+  var b=parseInt(clean.substr(4,2),16)||0;
+  var brightness=(r*299+g*587+b*114)/1000;
+  return brightness>155?'#000':'#fff';
+}
+function colorToRgba(hexColor, opacityPercent){
+  var normalized=(hexColor||'#1c1c1e').trim();
+  if(normalized.startsWith('rgba(') || normalized.startsWith('rgb(')){ return normalized; }
+  if(normalized.startsWith('#')===false) normalized='#'+normalized;
+  var clean=normalized.replace('#','');
+  if(clean.length===3){clean=clean.split('').map(function(ch){return ch+ch;}).join('');}
+  var r=parseInt(clean.substr(0,2),16)||0;
+  var g=parseInt(clean.substr(2,2),16)||0;
+  var b=parseInt(clean.substr(4,2),16)||0;
+  var alpha=Math.max(0,Math.min(1,(parseInt(opacityPercent||100,10)/100)));
+  return 'rgba('+r+', '+g+', '+b+', '+alpha+')';
+}
+
+function resetChatAppearance(){
+  if(confirm('确定要恢复默认设置吗？')){
+    chatAppearanceSettings={
+      avatarSize:56,
+      avatarShape:'circle',
+      bubbleMaxWidth:70,
+      bubbleRadius:16,
+      bubblePadding:10,
+      userBubbleColor:'#1c1c1e',
+      aiBubbleColor:'#ffffff',
+      bubbleOpacity:92,
+      showUserName:true,
+      showAiName:true,
+      showMessageTime:true
+    };
+    localStorage.setItem('ld_chat_bubble_opacity',String(chatAppearanceSettings.bubbleOpacity));
+    document.documentElement.style.setProperty('--bubble-opacity',chatAppearanceSettings.bubbleOpacity/100);
+    initChatAppearanceSettings();
+    applyChatAppearanceSettings();
+  }
+}
+
+function saveChatAppearance(){
+  // 从 UI 获取最新值
+  chatAppearanceSettings.avatarSize=parseInt(document.getElementById('avatarSizeSlider')?.value||56);
+  chatAppearanceSettings.bubbleMaxWidth=parseInt(document.getElementById('bubbleWidthSlider')?.value||70);
+  chatAppearanceSettings.bubbleRadius=parseInt(document.getElementById('bubbleRadiusSlider')?.value||16);
+  chatAppearanceSettings.bubblePadding=parseInt(document.getElementById('bubblePaddingSlider')?.value||10);
+  chatAppearanceSettings.userBubbleColor=document.getElementById('userBubbleColorInput')?.value||'#1c1c1e';
+  chatAppearanceSettings.aiBubbleColor=document.getElementById('aiBubbleColorInput')?.value||'#ffffff';
+  chatAppearanceSettings.bubbleOpacity=parseInt(document.getElementById('bubbleOpacityRange')?.value||92);
+  chatAppearanceSettings.showUserName=document.getElementById('showUserName')?.checked!==false;
+  chatAppearanceSettings.showAiName=document.getElementById('showAiName')?.checked!==false;
+  chatAppearanceSettings.showMessageTime=document.getElementById('showMessageTime')?.checked!==false;
+
+  // 保存到 localStorage
+  localStorage.setItem('ld_chat_avatar_size',String(chatAppearanceSettings.avatarSize));
+  localStorage.setItem('ld_chat_avatar_shape',chatAppearanceSettings.avatarShape);
+  localStorage.setItem('ld_chat_bubble_max_width',String(chatAppearanceSettings.bubbleMaxWidth));
+  localStorage.setItem('ld_chat_bubble_radius',String(chatAppearanceSettings.bubbleRadius));
+  localStorage.setItem('ld_chat_bubble_padding',String(chatAppearanceSettings.bubblePadding));
+  localStorage.setItem('ld_chat_user_bubble_color',chatAppearanceSettings.userBubbleColor);
+  localStorage.setItem('ld_chat_ai_bubble_color',chatAppearanceSettings.aiBubbleColor);
+  localStorage.setItem('ld_chat_bubble_opacity',String(chatAppearanceSettings.bubbleOpacity));
+  localStorage.setItem('ld_chat_show_username',String(chatAppearanceSettings.showUserName));
+  localStorage.setItem('ld_chat_show_ainame',String(chatAppearanceSettings.showAiName));
+  localStorage.setItem('ld_chat_show_time',String(chatAppearanceSettings.showMessageTime));
+
+  // 应用CSS变量
+  document.documentElement.style.setProperty('--bubble-opacity',chatAppearanceSettings.bubbleOpacity/100);
+
+  // 应用设置到当前聊天页面
+  applyChatAppearanceSettings();
+
+  alert('设置已保存！');
+  openSettingsPage();
+}
+
+function applyChatAppearanceSettings(){
+  // 应用到所有消息
+  var messages=document.getElementById('messages');
+  if(!messages)return;
+
+  // 更新CSS变量
+  document.documentElement.style.setProperty('--bubble-opacity',chatAppearanceSettings.bubbleOpacity/100);
+  if(document.getElementById('bubbleOpacityRange')) document.getElementById('bubbleOpacityRange').value=chatAppearanceSettings.bubbleOpacity;
+  if(document.getElementById('bubbleOpacityLabel')) document.getElementById('bubbleOpacityLabel').textContent=chatAppearanceSettings.bubbleOpacity+'%';
+
+  var msgRows=messages.querySelectorAll('.msg-row');
+  msgRows.forEach(function(row){
+    // 更新头像
+    var avatar=row.querySelector('.msg-avatar');
+    if(avatar){
+      avatar.style.width=chatAppearanceSettings.avatarSize+'px';
+      avatar.style.height=chatAppearanceSettings.avatarSize+'px';
+      applyAvatarShape(avatar,chatAppearanceSettings.avatarShape);
+    }
+
+    // 更新气泡
+    var bubble=row.querySelector('.bubble');
+    if(bubble){
+      bubble.style.borderRadius=chatAppearanceSettings.bubbleRadius+'px';
+      bubble.style.padding=chatAppearanceSettings.bubblePadding+'px '+(chatAppearanceSettings.bubblePadding+4)+'px';
+      bubble.style.minHeight='0';
+      bubble.style.height='auto';
+
+      var userBubbleColor = colorToRgba(chatAppearanceSettings.userBubbleColor || '#1c1c1e', chatAppearanceSettings.bubbleOpacity);
+      var aiBubbleColor = colorToRgba(chatAppearanceSettings.aiBubbleColor || '#ffffff', chatAppearanceSettings.bubbleOpacity);
+
+      if(row.classList.contains('ai')){
+        bubble.style.backgroundColor=aiBubbleColor;
+        bubble.style.opacity='1';
+        bubble.style.color=getContrastColor(chatAppearanceSettings.aiBubbleColor||'#ffffff');
+      }else if(row.classList.contains('user')){
+        bubble.style.backgroundColor=userBubbleColor;
+        bubble.style.opacity='1';
+        bubble.style.color='#fff';
+      }
+    }
+
+    // 更新名称和时间显示
+    var author=row.querySelector('.msg-author');
+    var time=row.querySelector('.msg-time');
+    if(author)author.style.display=(row.classList.contains('ai')?chatAppearanceSettings.showAiName:chatAppearanceSettings.showUserName)?'block':'none';
+    if(time)time.style.display=chatAppearanceSettings.showMessageTime?'block':'none';
+  });
+}

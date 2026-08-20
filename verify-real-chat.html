@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chat页面结构验证</title>
+<style>
+body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+.result { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #4CAF50; }
+.error { border-left-color: #f44336; }
+.warning { border-left-color: #ff9800; }
+.title { font-size: 18px; font-weight: bold; margin: 20px 0 10px; }
+code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>🔍 LDiary Chat页面结构验证</h1>
+<p>这个页面用来验证实际修复是否生效。请在Chat页面中运行以下代码。</p>
+
+<h2 class="title">使用方法</h2>
+<div class="result">
+1. 打开 LDiary 应用 → Chat页面<br>
+2. 按 F12 打开开发者工具 → Console<br>
+3. 复制下面的验证代码到控制台运行<br>
+4. 查看输出结果
+</div>
+
+<h2 class="title">验证代码</h2>
+<pre style="background:#e8e8e8; padding:15px; border-radius:8px; overflow-x:auto;">
+// ===== 验证1: CSS样式检查 =====
+console.log('===== CSS样式检查 =====');
+var bubble = document.querySelector('.msg-row .bubble');
+if(bubble) {
+  var computed = getComputedStyle(bubble);
+  console.log('✓ bubble元素存在');
+  console.log('  display:', computed.display, '(应为 inline-block)');
+  console.log('  min-height:', computed.minHeight, '(应为 1.4em或22px)');
+  console.log('  height:', computed.height);
+  console.log('  padding:', computed.padding, '(应为 10px 14px)');
+} else {
+  console.error('✗ 未找到 .bubble 元素');
+}
+
+// ===== 验证2: msg-row对齐检查 =====
+console.log('\n===== msg-row对齐检查 =====');
+var msgRow = document.querySelector('.msg-row');
+if(msgRow) {
+  var computed = getComputedStyle(msgRow);
+  console.log('✓ msg-row元素存在');
+  console.log('  align-items:', computed.alignItems, '(应为 flex-start)');
+  console.log('  gap:', computed.gap, '(应为 8px)');
+  console.log('  margin-bottom:', computed.marginBottom, '(应为 12px)');
+} else {
+  console.error('✗ 未找到 .msg-row 元素');
+}
+
+// ===== 验证3: 头像样式检查 =====
+console.log('\n===== 头像样式检查 =====');
+var avatar = document.querySelector('.msg-avatar');
+if(avatar) {
+  var computed = getComputedStyle(avatar);
+  console.log('✓ msg-avatar元素存在');
+  console.log('  width:', computed.width, '(应为 56px)');
+  console.log('  height:', computed.height, '(应为 56px)');
+  console.log('  margin-top:', computed.marginTop, '(应为 4px)');
+  console.log('  border-radius:', computed.borderRadius);
+} else {
+  console.error('✗ 未找到 .msg-avatar 元素');
+}
+
+// ===== 验证4: 聊天外观设置检查 =====
+console.log('\n===== 聊天外观设置检查 =====');
+if(typeof chatAppearanceSettings !== 'undefined') {
+  console.log('✓ chatAppearanceSettings存在');
+  console.log('  userBubbleColor:', chatAppearanceSettings.userBubbleColor);
+  console.log('  aiBubbleColor:', chatAppearanceSettings.aiBubbleColor);
+  console.log('  bubbleMaxWidth:', chatAppearanceSettings.bubbleMaxWidth);
+} else {
+  console.warn('⚠ chatAppearanceSettings未定义（可能未加载settings.js）');
+}
+
+// ===== 验证5: localStorage检查 =====
+console.log('\n===== localStorage检查 =====');
+console.log('ld_chat_user_bubble_color:', localStorage.getItem('ld_chat_user_bubble_color'));
+console.log('ld_chat_ai_bubble_color:', localStorage.getItem('ld_chat_ai_bubble_color'));
+console.log('ld_bubbleopacity:', localStorage.getItem('ld_bubbleopacity'));
+
+// ===== 验证6: 短文本消息测试 =====
+console.log('\n===== 短文本气泡检查 =====');
+var bubbles = document.querySelectorAll('.bubble');
+console.log('找到 ' + bubbles.length + ' 个气泡');
+if(bubbles.length > 0) {
+  var lastBubble = bubbles[bubbles.length - 1];
+  var computed = getComputedStyle(lastBubble);
+  var rect = lastBubble.getBoundingClientRect();
+  console.log('最后一个气泡:');
+  console.log('  文本长度:', lastBubble.textContent.length, '字符');
+  console.log('  实际高度:', Math.round(rect.height), 'px');
+  console.log('  min-height:', computed.minHeight);
+  console.log('  backgroundColor:', lastBubble.style.backgroundColor || computed.backgroundColor);
+  console.log('  opacity:', lastBubble.style.opacity || computed.opacity);
+}
+
+console.log('\n✅ 验证完成！检查上述输出，确认所有值符合预期。');
+</pre>
+
+<h2 class="title">预期输出结果</h2>
+<div class="result">
+<strong>CSS样式检查:</strong><br>
+✓ display: inline-block<br>
+✓ min-height: 1.4em 或 22px<br>
+✓ padding: 10px 14px
+
+<strong>msg-row对齐检查:</strong><br>
+✓ align-items: flex-start<br>
+✓ gap: 8px<br>
+✓ margin-bottom: 12px
+
+<strong>头像样式检查:</strong><br>
+✓ width: 56px<br>
+✓ height: 56px<br>
+✓ margin-top: 4px
+
+<strong>聊天外观设置:</strong><br>
+✓ chatAppearanceSettings 存在<br>
+✓ userBubbleColor 和 aiBubbleColor 有值
+</div>
+
+<h2 class="title">手动测试步骤</h2>
+<div class="result">
+<strong>测试1: 发送短文本</strong>
+<ol>
+  <li>在Chat页面输入 "好" 或 "是"</li>
+  <li>按Enter发送</li>
+  <li>观察气泡高度是否正常（无折叠）</li>
+  <li>检查头像是否与气泡顶部对齐</li>
+</ol>
+
+<strong>测试2: 发送长文本</strong>
+<ol>
+  <li>输入一段较长的文本（50字以上）</li>
+  <li>按Enter发送</li>
+  <li>观察气泡是否自动换行</li>
+  <li>检查头像是否保持在顶部对齐</li>
+</ol>
+
+<strong>测试3: 颜色设置</strong>
+<ol>
+  <li>打开设置 → 聊天外观</li>
+  <li>将用户气泡颜色改为 #3a8fba（蓝色）</li>
+  <li>点击保存</li>
+  <li>回到Chat页面，发送新消息</li>
+  <li>验证新消息气泡显示为蓝色（非透明）</li>
+</ol>
+
+<strong>测试4: 透明度设置</strong>
+<ol>
+  <li>打开设置 → 聊天外观</li>
+  <li>将用户气泡颜色改回 #1c1c1e（默认）</li>
+  <li>打开透明度滑块，调整到 50%</li>
+  <li>点击保存</li>
+  <li>发送新消息，验证气泡显示为半透明</li>
+</ol>
+</div>
+
+<h2 class="title">常见问题</h2>
+<div class="result warning">
+<strong>❓ 如果display不是inline-block？</strong><br>
+检查是否有其他CSS规则覆盖了 .bubble 的 display 属性。
+可能在 components.css 中有冲突。
+
+<strong>❓ 如果margin-top没有显示？</strong><br>
+这是正常的，margin不会显示在computedStyle中。
+用 getBoundingClientRect() 检查实际位置即可。
+
+<strong>❓ 如果高度看起来还是不对？</strong><br>
+清除浏览器缓存后刷新页面。
+确保最新的 index.html 已上传。
+</div>
+
+</body>
+</html>
